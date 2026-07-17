@@ -1,0 +1,52 @@
+# ระบบเบิกวัสดุบรรจุภัณฑ์ (กล่อง / เทปใส / บับเบิ้ล)
+
+เว็บแอปเบิกของแบบง่าย ใช้งานได้บนมือถือ ไม่มีค่าใช้จ่าย โฮสต์ฟรีบน GitHub Pages
+ข้อมูลที่กรอกจะถูกบันทึกลง Google Sheet ในบัญชี Google Drive ขององค์กร ผ่าน Google Apps Script
+
+## โครงสร้างไฟล์
+
+- `index.html` — หน้าเว็บฟอร์มเบิกของ (HTML + CSS + JS ทั้งหมดอยู่ในไฟล์เดียว)
+- `Code.gs` — โค้ด backend สำหรับ Google Apps Script ที่รับข้อมูลจากฟอร์มไปบันทึกลง Google Sheet
+
+## วิธีตั้งค่า (ทำครั้งเดียว ใช้เวลาประมาณ 5 นาที)
+
+### ขั้นตอนที่ 1: สร้าง Google Sheet + Apps Script
+
+1. ไปที่ [sheets.google.com](https://sheets.google.com) แล้วสร้างสเปรดชีตใหม่ ตั้งชื่อเช่น "ข้อมูลเบิกวัสดุบรรจุภัณฑ์"
+2. เมนู **ส่วนขยาย (Extensions) > Apps Script**
+3. ลบโค้ดเดิมทั้งหมดในไฟล์ `Code.gs` แล้ววางโค้ดจากไฟล์ `Code.gs` ในโปรเจกต์นี้แทน
+4. กด **บันทึก** (ไอคอนแผ่นดิสก์)
+
+### ขั้นตอนที่ 2: Deploy เป็น Web App
+
+1. มุมขวาบน กด **Deploy > New deployment**
+2. ที่ "Select type" กดไอคอนเฟือง เลือก **Web app**
+3. ตั้งค่า:
+   - **Execute as:** Me (บัญชีของคุณ)
+   - **Who has access:** Anyone (หรือ "Anyone within [ชื่อองค์กร]" ถ้าใช้ Google Workspace และต้องการจำกัดเฉพาะคนในองค์กร)
+4. กด **Deploy** แล้วอนุญาต (Authorize) สิทธิ์การเข้าถึงตามที่ระบบขอ
+5. คัดลอก **Web app URL** ที่ได้ (จะขึ้นต้นด้วย `https://script.google.com/macros/s/...` และลงท้ายด้วย `/exec`)
+
+### ขั้นตอนที่ 3: เชื่อมฟอร์มเข้ากับ Web App
+
+1. เปิดไฟล์ `index.html`
+2. หาบรรทัดนี้ในส่วน `<script>`:
+   ```js
+   const SCRIPT_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+   ```
+3. แทนที่ด้วย URL ที่คัดลอกมาจากขั้นตอนที่ 2
+4. บันทึกไฟล์แล้ว push ขึ้น GitHub (หรืออัปเดตผ่านหน้าเว็บ GitHub โดยตรง)
+
+### ขั้นตอนที่ 4: เปิดใช้งาน GitHub Pages
+
+1. ไปที่ repo บน GitHub > **Settings > Pages**
+2. Source: เลือก branch `main` และโฟลเดอร์ `/ (root)`
+3. บันทึก แล้วรอสักครู่ จะได้ลิงก์ในรูปแบบ `https://<username>.github.io/<repo-name>/`
+4. เปิดลิงก์นี้บนมือถือหรือคอมพิวเตอร์เพื่อใช้งานฟอร์มเบิกของ
+
+## หมายเหตุ
+
+- หากต้องการแก้ไขรายการของที่เบิกได้ (เพิ่ม/ลบชนิดวัสดุ) แก้ไขได้ที่ส่วน `<div class="items">` ในไฟล์ `index.html`
+- ข้อมูลทั้งหมดจะอยู่ในแท็บ "Requests" ของ Google Sheet ที่สร้างไว้ในขั้นตอนที่ 1
+- ทุกครั้งที่แก้โค้ดใน Apps Script ต้องทำ **Deploy > Manage deployments > แก้ไข (ไอคอนดินสอ) > Version: New version > Deploy** ใหม่ ไม่เช่นนั้นการเปลี่ยนแปลงจะไม่มีผล
+- เว็บนี้เป็น static site ไม่มี login/authentication ในตัว หากต้องการจำกัดผู้ใช้งานเฉพาะคนในองค์กร แนะนำให้ตั้งค่า "Who has access" เป็น "Anyone within [organization]" ในขั้นตอนที่ 2 (ต้องใช้ Google Workspace)

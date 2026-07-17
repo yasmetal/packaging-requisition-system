@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบเบิกวัสดุบรรจุภัณฑ์</title>
+<style>
+  :root{
+    --primary:#2563eb;
+    --primary-dark:#1d4ed8;
+    --bg:#f3f4f6;
+    --card:#ffffff;
+    --text:#111827;
+    --muted:#6b7280;
+    --border:#e5e7eb;
+    --success:#16a34a;
+    --danger:#dc2626;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', 'Sarabun', -apple-system, BlinkMacSystemFont, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding-bottom:40px;
+  }
+  header{
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    color:#fff;
+    padding:24px 16px 32px;
+    text-align:center;
+  }
+  header h1{margin:0 0 4px;font-size:1.4rem;}
+  header p{margin:0;font-size:.85rem;opacity:.9;}
+  .container{
+    max-width:560px;
+    margin:-20px auto 0;
+    padding:0 16px;
+  }
+  .card{
+    background:var(--card);
+    border-radius:14px;
+    box-shadow:0 4px 16px rgba(0,0,0,.08);
+    padding:20px;
+    margin-bottom:16px;
+  }
+  .card h2{
+    font-size:1.05rem;
+    margin:0 0 14px;
+    border-left:4px solid var(--primary);
+    padding-left:10px;
+  }
+  label{
+    display:block;
+    font-size:.88rem;
+    font-weight:600;
+    margin:14px 0 6px;
+  }
+  input[type=text],
+  input[type=date],
+  input[type=number],
+  textarea,
+  select{
+    width:100%;
+    padding:11px 12px;
+    border:1px solid var(--border);
+    border-radius:9px;
+    font-size:1rem;
+    font-family:inherit;
+    background:#fafafa;
+  }
+  input:focus, textarea:focus, select:focus{
+    outline:none;
+    border-color:var(--primary);
+    background:#fff;
+  }
+  textarea{resize:vertical;min-height:70px;}
+  .items{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-top:6px;
+  }
+  .item-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px;
+    background:#fafafa;
+  }
+  .item-row.active{
+    border-color:var(--primary);
+    background:#eff6ff;
+  }
+  .item-left{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .item-left input[type=checkbox]{
+    width:20px;height:20px;
+    accent-color:var(--primary);
+  }
+  .item-name{font-weight:600;font-size:.95rem;}
+  .item-unit{font-size:.75rem;color:var(--muted);}
+  .qty-input{
+    width:80px;
+    padding:8px;
+    text-align:center;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:1rem;
+  }
+  .required{color:var(--danger);}
+  button.submit{
+    width:100%;
+    padding:14px;
+    margin-top:18px;
+    background:var(--primary);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    font-size:1rem;
+    font-weight:700;
+    cursor:pointer;
+    transition:background .15s;
+  }
+  button.submit:active{background:var(--primary-dark);}
+  button.submit:disabled{background:#9ca3af;cursor:not-allowed;}
+  .msg{
+    margin-top:12px;
+    padding:12px;
+    border-radius:9px;
+    font-size:.9rem;
+    display:none;
+  }
+  .msg.show{display:block;}
+  .msg.success{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0;}
+  .msg.error{background:#fef2f2;color:var(--danger);border:1px solid #fecaca;}
+  .history-item{
+    border-bottom:1px solid var(--border);
+    padding:10px 0;
+    font-size:.85rem;
+  }
+  .history-item:last-child{border-bottom:none;}
+  .history-top{display:flex;justify-content:space-between;font-weight:600;}
+  .history-items{color:var(--muted);margin-top:2px;}
+  .history-empty{color:var(--muted);font-size:.85rem;text-align:center;padding:10px 0;}
+  .setup-note{
+    background:#fffbeb;
+    border:1px solid #fde68a;
+    color:#92400e;
+    padding:12px;
+    border-radius:9px;
+    font-size:.82rem;
+    margin-bottom:16px;
+    display:none;
+  }
+  .setup-note.show{display:block;}
+  footer{
+    text-align:center;
+    font-size:.75rem;
+    color:var(--muted);
+    margin-top:20px;
+  }
+  .refresh-btn{
+    background:none;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:6px 12px;
+    font-size:.8rem;
+    color:var(--primary);
+    cursor:pointer;
+    float:right;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ระบบเบิกวัสดุบรรจุภัณฑ์</h1>
+  <p>กล่อง · เทปใส · บับเบิ้ล — ใช้งานได้บนมือถือ</p>
+</header>
+
+<div class="container">
+
+  <div id="setupNote" class="setup-note">
+    ⚠️ ยังไม่ได้ตั้งค่าปลายทางบันทึกข้อมูล กรุณาแก้ไขค่า <code>SCRIPT_URL</code> ในไฟล์นี้ให้เป็น URL ของ Google Apps Script Web App (ดูวิธีทำใน README.md)
+  </div>
+
+  <form id="reqForm" class="card">
+    <h2>แบบฟอร์มเบิกของ</h2>
+
+    <label>ชื่อผู้เบิก <span class="required">*</span></label>
+    <input type="text" id="name" required placeholder="ชื่อ-นามสกุล">
+
+    <label>แผนก / ฝ่าย <span class="required">*</span></label>
+    <input type="text" id="department" required placeholder="เช่น คลังสินค้า, บัญชี">
+
+    <label>วันที่ต้องการใช้ <span class="required">*</span></label>
+    <input type="date" id="dateNeeded" required>
+
+    <label>รายการที่ต้องการเบิก <span class="required">*</span></label>
+    <div class="items">
+      <div class="item-row" data-item="กล่อง">
+        <div class="item-left">
+          <input type="checkbox" class="item-check" data-name="กล่อง">
+          <div>
+            <div class="item-name">📦 กล่อง</div>
+            <div class="item-unit">หน่วย: ใบ</div>
+          </div>
+        </div>
+        <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+      </div>
+      <div class="item-row" data-item="เทปใส">
+        <div class="item-left">
+          <input type="checkbox" class="item-check" data-name="เทปใส">
+          <div>
+            <div class="item-name">🎞️ เทปใส</div>
+            <div class="item-unit">หน่วย: ม้วน</div>
+          </div>
+        </div>
+        <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+      </div>
+      <div class="item-row" data-item="บับเบิ้ล">
+        <div class="item-left">
+          <input type="checkbox" class="item-check" data-name="บับเบิ้ล">
+          <div>
+            <div class="item-name">🫧 บับเบิ้ล</div>
+            <div class="item-unit">หน่วย: ม้วน</div>
+          </div>
+        </div>
+        <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+      </div>
+    </div>
+
+    <label>หมายเหตุ / เหตุผลในการเบิก</label>
+    <textarea id="note" placeholder="ระบุเหตุผล หรือรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
+
+    <button type="submit" class="submit" id="submitBtn">ส่งคำขอเบิก</button>
+    <div id="msg" class="msg"></div>
+  </form>
+
+  <div class="card">
+    <h2>ประวัติการเบิกล่าสุด <button type="button" class="refresh-btn" id="refreshBtn">รีเฟรช</button></h2>
+    <div id="historyList">
+      <div class="history-empty">กำลังโหลด...</div>
+    </div>
+  </div>
+
+</div>
+
+<footer>ระบบเบิกวัสดุบรรจุภัณฑ์ · ข้อมูลถูกบันทึกใน Google Sheet ขององค์กร</footer>
+
+<script>
+  // ===== ตั้งค่าตรงนี้: วาง URL ของ Google Apps Script Web App ที่ deploy แล้ว =====
+  const SCRIPT_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+  // ตัวอย่าง: https://script.google.com/macros/s/AKfycb.../exec
+
+  const form = document.getElementById('reqForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const msg = document.getElementById('msg');
+  const setupNote = document.getElementById('setupNote');
+  const historyList = document.getElementById('historyList');
+
+  if (!SCRIPT_URL || SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
+    setupNote.classList.add('show');
+  }
+
+  // toggle qty input when checkbox checked
+  document.querySelectorAll('.item-row').forEach(row => {
+    const check = row.querySelector('.item-check');
+    const qty = row.querySelector('.qty-input');
+    check.addEventListener('change', () => {
+      qty.disabled = !check.checked;
+      row.classList.toggle('active', check.checked);
+      if (check.checked) {
+        qty.value = qty.value || 1;
+        qty.focus();
+      } else {
+        qty.value = '';
+      }
+    });
+  });
+
+  function showMsg(text, type) {
+    msg.textContent = text;
+    msg.className = 'msg show ' + type;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.className = 'msg';
+
+    const items = [];
+    document.querySelectorAll('.item-row').forEach(row => {
+      const check = row.querySelector('.item-check');
+      const qty = row.querySelector('.qty-input');
+      if (check.checked) {
+        const q = parseInt(qty.value, 10);
+        if (q > 0) items.push({ name: check.dataset.name, qty: q });
+      }
+    });
+
+    if (items.length === 0) {
+      showMsg('กรุณาเลือกอย่างน้อย 1 รายการ และระบุจำนวน', 'error');
+      return;
+    }
+
+    if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
+      showMsg('ยังไม่ได้ตั้งค่า SCRIPT_URL — ดูวิธีตั้งค่าใน README.md', 'error');
+      return;
+    }
+
+    const payload = {
+      name: document.getElementById('name').value.trim(),
+      department: document.getElementById('department').value.trim(),
+      dateNeeded: document.getElementById('dateNeeded').value,
+      items: items,
+      note: document.getElementById('note').value.trim(),
+      submittedAt: new Date().toISOString()
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'กำลังส่ง...';
+
+    try {
+      // text/plain avoids CORS preflight against Apps Script web apps
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      showMsg('✅ ส่งคำขอเบิกเรียบร้อยแล้ว', 'success');
+      form.reset();
+      document.querySelectorAll('.qty-input').forEach(q => { q.disabled = true; q.value=''; });
+      document.querySelectorAll('.item-row').forEach(r => r.classList.remove('active'));
+      loadHistory();
+    } catch (err) {
+      showMsg('❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่', 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'ส่งคำขอเบิก';
+    }
+  });
+
+  async function loadHistory() {
+    if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
+      historyList.innerHTML = '<div class="history-empty">ตั้งค่า SCRIPT_URL ก่อนจึงจะแสดงประวัติได้</div>';
+      return;
+    }
+    try {
+      const res = await fetch(SCRIPT_URL + '?action=list&limit=10');
+      const data = await res.json();
+      const rows = data.rows || [];
+      if (rows.length === 0) {
+        historyList.innerHTML = '<div class="history-empty">ยังไม่มีรายการเบิก</div>';
+        return;
+      }
+      historyList.innerHTML = rows.slice().reverse().map(r => `
+        <div class="history-item">
+          <div class="history-top"><span>${escapeHtml(r.name)} (${escapeHtml(r.department)})</span><span>${escapeHtml(r.dateNeeded)}</span></div>
+          <div class="history-items">${escapeHtml(r.itemsSummary)}</div>
+        </div>
+      `).join('');
+    } catch (err) {
+      historyList.innerHTML = '<div class="history-empty">ไม่สามารถโหลดประวัติได้ในขณะนี้</div>';
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  // default date = today
+  document.getElementById('dateNeeded').valueAsDate = new Date();
+
+  document.getElementById('refreshBtn').addEventListener('click', loadHistory);
+  loadHistory();
+</script>
+
+</body>
+</html>
