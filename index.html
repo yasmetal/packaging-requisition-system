@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบเบิกวัสดุบรรจุภัณฑ์</title>
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   :root{
     --primary:#2563eb;
@@ -27,10 +29,35 @@
   header{
     background:linear-gradient(135deg,var(--primary),var(--primary-dark));
     color:#fff;
-    padding:24px 16px 32px;
+    padding:22px 16px 34px;
     text-align:center;
   }
-  header h1{margin:0 0 4px;font-size:1.4rem;}
+  .brand{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    margin-bottom:2px;
+  }
+  .brand-logo{
+    flex:0 0 auto;
+    width:52px;
+    height:52px;
+    background:#fff;
+    border-radius:14px;
+    box-shadow:0 3px 10px rgba(0,0,0,.18);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:6px;
+  }
+  .brand-logo img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+  }
+  .brand-text{text-align:left;}
+  header h1{margin:0 0 4px;font-size:1.25rem;line-height:1.25;}
   header p{margin:0;font-size:.85rem;opacity:.9;}
   .container{
     max-width:560px;
@@ -182,8 +209,13 @@
 <body>
 
 <header>
-  <h1>ระบบเบิกวัสดุบรรจุภัณฑ์</h1>
-  <p>กล่อง · เทปใส · บับเบิ้ล — ใช้งานได้บนมือถือ</p>
+  <div class="brand">
+    <div class="brand-logo"><img src="logo.png" alt="Phattha logo"></div>
+    <div class="brand-text">
+      <h1>ระบบเบิกวัสดุบรรจุภัณฑ์</h1>
+      <p>กล่อง · เทปใส · บับเบิ้ล — ใช้งานได้บนมือถือ</p>
+    </div>
+  </div>
 </header>
 
 <div class="container">
