@@ -158,16 +158,49 @@
   }
   button.submit:active{background:var(--primary-dark);}
   button.submit:disabled{background:#9ca3af;cursor:not-allowed;}
-  .msg{
-    margin-top:12px;
-    padding:12px;
-    border-radius:9px;
-    font-size:.9rem;
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(17,24,39,.55);
     display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:1000;
   }
-  .msg.show{display:block;}
-  .msg.success{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0;}
-  .msg.error{background:#fef2f2;color:var(--danger);border:1px solid #fecaca;}
+  .modal-overlay.show{display:flex;}
+  .modal-box{
+    background:#fff;
+    border-radius:16px;
+    padding:30px 22px 22px;
+    max-width:340px;
+    width:100%;
+    text-align:center;
+    box-shadow:0 14px 36px rgba(0,0,0,.28);
+    animation:modalPop .18s ease-out;
+  }
+  @keyframes modalPop{
+    from{transform:scale(.92);opacity:0;}
+    to{transform:scale(1);opacity:1;}
+  }
+  .modal-icon{font-size:46px;line-height:1;margin-bottom:12px;}
+  .modal-title{font-size:1.08rem;font-weight:700;margin-bottom:8px;}
+  .modal-box.success .modal-title{color:var(--success);}
+  .modal-box.error .modal-title{color:var(--danger);}
+  .modal-text{font-size:.88rem;color:var(--muted);margin-bottom:22px;line-height:1.55;}
+  .modal-btn{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    background:var(--primary);
+    color:#fff;
+    font-size:.95rem;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .modal-box.error .modal-btn{background:var(--danger);}
+  .modal-btn:active{opacity:.88;}
   .history-item{
     border-bottom:1px solid var(--border);
     padding:10px 0;
@@ -274,7 +307,6 @@
     <textarea id="note" placeholder="ระบุเหตุผล หรือรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
 
     <button type="submit" class="submit" id="submitBtn">ส่งคำขอเบิก</button>
-    <div id="msg" class="msg"></div>
   </form>
 
   <div class="card">
@@ -288,6 +320,15 @@
 
 <footer>ระบบเบิกวัสดุบรรจุภัณฑ์ · ข้อมูลถูกบันทึกใน Google Sheet ขององค์กร</footer>
 
+<div id="modalOverlay" class="modal-overlay">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-icon" id="modalIcon">✅</div>
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-text" id="modalText"></div>
+    <button type="button" class="modal-btn" id="modalCloseBtn">ตกลง</button>
+  </div>
+</div>
+
 <script>
   // ===== ตั้งค่าตรงนี้: วาง URL ของ Google Apps Script Web App ที่ deploy แล้ว =====
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWTTXTybmq0ArPGa-RjNJio2evN_N1lKqa4XW_9jC3DzvdyuN8J6LRzysvo9cOmF6-/exec";
@@ -295,13 +336,40 @@
 
   const form = document.getElementById('reqForm');
   const submitBtn = document.getElementById('submitBtn');
-  const msg = document.getElementById('msg');
   const setupNote = document.getElementById('setupNote');
   const historyList = document.getElementById('historyList');
+
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalBox = document.getElementById('modalBox');
+  const modalIcon = document.getElementById('modalIcon');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const modalCloseBtn = document.getElementById('modalCloseBtn');
 
   if (!SCRIPT_URL || SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
     setupNote.classList.add('show');
   }
+
+  // ป๊อปอัปแจ้งเตือนผลการส่งคำขอเบิก (แสดงทุกครั้งที่กดปุ่ม "ส่งคำขอเบิก")
+  function showModal(type, title, text) {
+    modalBox.classList.remove('success', 'error');
+    modalBox.classList.add(type);
+    modalIcon.textContent = type === 'success' ? '✅' : '⚠️';
+    modalTitle.textContent = title;
+    modalText.textContent = text;
+    modalOverlay.classList.add('show');
+    modalCloseBtn.focus();
+  }
+  function closeModal() {
+    modalOverlay.classList.remove('show');
+  }
+  modalCloseBtn.addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
 
   // toggle qty input when checkbox checked
   document.querySelectorAll('.item-row').forEach(row => {
@@ -319,14 +387,8 @@
     });
   });
 
-  function showMsg(text, type) {
-    msg.textContent = text;
-    msg.className = 'msg show ' + type;
-  }
-
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    msg.className = 'msg';
 
     const items = [];
     document.querySelectorAll('.item-row').forEach(row => {
@@ -339,12 +401,12 @@
     });
 
     if (items.length === 0) {
-      showMsg('กรุณาเลือกอย่างน้อย 1 รายการ และระบุจำนวน', 'error');
+      showModal('error', 'กรอกข้อมูลไม่ครบ', 'กรุณาเลือกอย่างน้อย 1 รายการ และระบุจำนวนให้ถูกต้อง ก่อนส่งคำขอเบิก');
       return;
     }
 
     if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
-      showMsg('ยังไม่ได้ตั้งค่า SCRIPT_URL — ดูวิธีตั้งค่าใน README.md', 'error');
+      showModal('error', 'ยังไม่ได้ตั้งค่าระบบ', 'ยังไม่ได้ตั้งค่า SCRIPT_URL สำหรับบันทึกข้อมูล — ดูวิธีตั้งค่าใน README.md');
       return;
     }
 
@@ -367,13 +429,14 @@
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
       });
-      showMsg('✅ ส่งคำขอเบิกเรียบร้อยแล้ว', 'success');
+      showModal('success', 'ส่งคำขอเบิกสำเร็จ', 'ระบบได้บันทึกคำขอเบิกของคุณเรียบร้อยแล้ว ทีมงานจะดำเนินการจัดเตรียมของให้ต่อไป');
       form.reset();
       document.querySelectorAll('.qty-input').forEach(q => { q.disabled = true; q.value=''; });
       document.querySelectorAll('.item-row').forEach(r => r.classList.remove('active'));
+      document.getElementById('dateNeeded').valueAsDate = new Date();
       loadHistory();
     } catch (err) {
-      showMsg('❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่', 'error');
+      showModal('error', 'ส่งคำขอเบิกไม่สำเร็จ', 'เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองส่งคำขอใหม่อีกครั้ง');
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = 'ส่งคำขอเบิก';
