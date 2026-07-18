@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบเบิกวัสดุบรรจุภัณฑ์</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root{
     --primary:#2563eb;
@@ -577,6 +577,15 @@
       legendEl.innerHTML = '';
       emptyEl.style.display = 'block';
       emptyEl.textContent = 'ตั้งค่า SCRIPT_URL ก่อนจึงจะแสดงแดชบอร์ดได้';
+      setKpi('–', '–', '–');
+      return;
+    }
+
+    if (typeof Chart === 'undefined') {
+      wrap.style.display = 'none';
+      legendEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'ไม่สามารถโหลดไลบรารีกราฟได้ (เช็คการเชื่อมต่ออินเทอร์เน็ต แล้วลองรีเฟรชอีกครั้ง)';
       setKpi('–', '–', '–');
       return;
     }
