@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบเบิกวัสดุบรรจุภัณฑ์</title>
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root{
@@ -34,8 +36,32 @@
     padding:24px 16px 44px;
     text-align:center;
   }
-  header h1{margin:0 0 4px;font-size:1.4rem;}
+  header h1{margin:0 0 4px;font-size:1.25rem;line-height:1.25;}
   header p{margin:0;font-size:.85rem;opacity:.9;}
+  .brand{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+  }
+  .brand-logo{
+    flex:0 0 auto;
+    width:52px;
+    height:52px;
+    background:#fff;
+    border-radius:14px;
+    box-shadow:0 3px 10px rgba(0,0,0,.18);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:6px;
+  }
+  .brand-logo img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+  }
+  .brand-text{text-align:left;}
   .container{
     max-width:560px;
     margin:0 auto;
@@ -288,8 +314,13 @@
 <body>
 
 <header>
-  <h1>ระบบเบิกวัสดุบรรจุภัณฑ์</h1>
-  <p>กล่อง · เทปใส · บับเบิ้ล — ใช้งานได้บนมือถือ</p>
+  <div class="brand">
+    <div class="brand-logo"><img src="logo.png" alt="Phattha logo"></div>
+    <div class="brand-text">
+      <h1>ระบบเบิกวัสดุบรรจุภัณฑ์</h1>
+      <p>กล่อง · เทปใส · บับเบิ้ล — ใช้งานได้บนมือถือ</p>
+    </div>
+  </div>
 </header>
 
 <div class="container">
@@ -407,7 +438,7 @@
 
 <script>
   // ===== ตั้งค่าตรงนี้: วาง URL ของ Google Apps Script Web App ที่ deploy แล้ว =====
-  const SCRIPT_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWTTXTybmq0ArPGa-RjNJio2evN_N1lKqa4XW_9jC3DzvdyuN8J6LRzysvo9cOmF6-/exec";
   // ตัวอย่าง: https://script.google.com/macros/s/AKfycb.../exec
 
   const ITEM_COLORS = { 'กล่อง': '#2563eb', 'เทปใส': '#16a34a', 'บับเบิ้ล': '#7c3aed' };
