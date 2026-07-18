@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบเบิกวัสดุบรรจุภัณฑ์</title>
-<link rel="icon" type="image/x-icon" href="favicon.ico">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <style>
   :root{
     --primary:#2563eb;
     --primary-dark:#1d4ed8;
+    --primary-light:#eff6ff;
     --bg:#f3f4f6;
     --card:#ffffff;
     --text:#111827;
@@ -17,6 +17,8 @@
     --border:#e5e7eb;
     --success:#16a34a;
     --danger:#dc2626;
+    --accent2:#16a34a;
+    --accent3:#7c3aed;
   }
   *{box-sizing:border-box;}
   body{
@@ -29,45 +31,61 @@
   header{
     background:linear-gradient(135deg,var(--primary),var(--primary-dark));
     color:#fff;
-    padding:22px 16px 34px;
+    padding:24px 16px 44px;
     text-align:center;
   }
-  .brand{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:12px;
-    margin-bottom:2px;
-  }
-  .brand-logo{
-    flex:0 0 auto;
-    width:52px;
-    height:52px;
-    background:#fff;
-    border-radius:14px;
-    box-shadow:0 3px 10px rgba(0,0,0,.18);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:6px;
-  }
-  .brand-logo img{
-    width:100%;
-    height:100%;
-    object-fit:contain;
-  }
-  .brand-text{text-align:left;}
-  header h1{margin:0 0 4px;font-size:1.25rem;line-height:1.25;}
+  header h1{margin:0 0 4px;font-size:1.4rem;}
   header p{margin:0;font-size:.85rem;opacity:.9;}
   .container{
     max-width:560px;
-    margin:-20px auto 0;
+    margin:0 auto;
     padding:0 16px;
   }
+
+  /* Tab bar */
+  .tabbar{
+    display:flex;
+    gap:6px;
+    background:var(--card);
+    border-radius:14px;
+    padding:5px;
+    box-shadow:0 6px 18px rgba(17,24,39,.12);
+    margin-top:-26px;
+    margin-bottom:16px;
+    position:relative;
+    z-index:2;
+  }
+  .tab-btn{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:11px 8px;
+    border-radius:10px;
+    border:none;
+    background:transparent;
+    font-weight:700;
+    font-size:.88rem;
+    color:var(--muted);
+    cursor:pointer;
+    font-family:inherit;
+    transition:background .15s, color .15s;
+  }
+  .tab-btn.active{
+    background:var(--primary);
+    color:#fff;
+    box-shadow:0 3px 8px rgba(37,99,235,.35);
+  }
+
+  .panel{display:none;}
+  .panel.active{display:block;animation:fadeIn .2s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
   .card{
     background:var(--card);
     border-radius:14px;
-    box-shadow:0 4px 16px rgba(0,0,0,.08);
+    box-shadow:0 4px 16px rgba(0,0,0,.06);
     padding:20px;
     margin-bottom:16px;
   }
@@ -76,6 +94,9 @@
     margin:0 0 14px;
     border-left:4px solid var(--primary);
     padding-left:10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
   }
   label{
     display:block;
@@ -100,6 +121,7 @@
     outline:none;
     border-color:var(--primary);
     background:#fff;
+    box-shadow:0 0 0 3px rgba(37,99,235,.12);
   }
   textarea{resize:vertical;min-height:70px;}
   .items{
@@ -112,30 +134,44 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
+    gap:10px;
     border:1px solid var(--border);
     border-radius:10px;
     padding:12px;
     background:#fafafa;
+    transition:border-color .15s, background .15s;
   }
   .item-row.active{
     border-color:var(--primary);
-    background:#eff6ff;
+    background:var(--primary-light);
   }
   .item-left{
     display:flex;
     align-items:center;
     gap:10px;
+    flex:1 1 auto;
+    min-width:0;
   }
   .item-left input[type=checkbox]{
     width:20px;height:20px;
     accent-color:var(--primary);
+    flex:0 0 20px;
   }
-  .item-name{font-weight:600;font-size:.95rem;}
-  .item-unit{font-size:.75rem;color:var(--muted);}
-  .item-left{flex:1 1 auto;min-width:0;}
+  .item-icon{
+    width:34px;height:34px;
+    border-radius:9px;
+    background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.1rem;
+    flex:0 0 34px;
+    box-shadow:0 1px 3px rgba(0,0,0,.08);
+  }
+  .item-text{min-width:0;}
+  .item-name{font-weight:600;font-size:.95rem;white-space:nowrap;}
+  .item-unit{font-size:.75rem;color:var(--muted);white-space:nowrap;}
   .item-row .qty-input{
-    width:80px;
-    flex:0 0 80px;
+    width:76px;
+    flex:0 0 76px;
     padding:8px;
     text-align:center;
     border:1px solid var(--border);
@@ -143,6 +179,7 @@
     font-size:1rem;
   }
   .required{color:var(--danger);}
+  .hint{font-size:.78rem;color:var(--muted);margin-top:4px;}
   button.submit{
     width:100%;
     padding:14px;
@@ -154,60 +191,27 @@
     font-size:1rem;
     font-weight:700;
     cursor:pointer;
-    transition:background .15s;
+    transition:background .15s, transform .1s;
   }
-  button.submit:active{background:var(--primary-dark);}
+  button.submit:active{background:var(--primary-dark);transform:scale(.99);}
   button.submit:disabled{background:#9ca3af;cursor:not-allowed;}
-  .modal-overlay{
-    position:fixed;
-    inset:0;
-    background:rgba(17,24,39,.55);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
-    z-index:1000;
-  }
-  .modal-overlay.show{display:flex;}
-  .modal-box{
-    background:#fff;
-    border-radius:16px;
-    padding:30px 22px 22px;
-    max-width:340px;
-    width:100%;
-    text-align:center;
-    box-shadow:0 14px 36px rgba(0,0,0,.28);
-    animation:modalPop .18s ease-out;
-  }
-  @keyframes modalPop{
-    from{transform:scale(.92);opacity:0;}
-    to{transform:scale(1);opacity:1;}
-  }
-  .modal-icon{font-size:46px;line-height:1;margin-bottom:12px;}
-  .modal-title{font-size:1.08rem;font-weight:700;margin-bottom:8px;}
-  .modal-box.success .modal-title{color:var(--success);}
-  .modal-box.error .modal-title{color:var(--danger);}
-  .modal-text{font-size:.88rem;color:var(--muted);margin-bottom:22px;line-height:1.55;}
-  .modal-btn{
-    width:100%;
+  .msg{
+    margin-top:12px;
     padding:12px;
-    border:none;
-    border-radius:10px;
-    background:var(--primary);
-    color:#fff;
-    font-size:.95rem;
-    font-weight:700;
-    cursor:pointer;
+    border-radius:9px;
+    font-size:.9rem;
+    display:none;
   }
-  .modal-box.error .modal-btn{background:var(--danger);}
-  .modal-btn:active{opacity:.88;}
+  .msg.show{display:block;}
+  .msg.success{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0;}
+  .msg.error{background:#fef2f2;color:var(--danger);border:1px solid #fecaca;}
   .history-item{
     border-bottom:1px solid var(--border);
     padding:10px 0;
     font-size:.85rem;
   }
   .history-item:last-child{border-bottom:none;}
-  .history-top{display:flex;justify-content:space-between;font-weight:600;}
+  .history-top{display:flex;justify-content:space-between;font-weight:600;gap:8px;}
   .history-items{color:var(--muted);margin-top:2px;}
   .history-empty{color:var(--muted);font-size:.85rem;text-align:center;padding:10px 0;}
   .setup-note{
@@ -232,87 +236,168 @@
     border:1px solid var(--border);
     border-radius:8px;
     padding:6px 12px;
-    font-size:.8rem;
+    font-size:.78rem;
     color:var(--primary);
     cursor:pointer;
-    float:right;
+    font-family:inherit;
+  }
+
+  /* Dashboard */
+  .kpi-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .kpi-card{
+    background:var(--card);
+    border-radius:14px;
+    padding:14px 8px;
+    text-align:center;
+    box-shadow:0 4px 16px rgba(0,0,0,.06);
+  }
+  .kpi-value{font-size:1.3rem;font-weight:800;color:var(--primary);line-height:1.2;}
+  .kpi-label{font-size:.68rem;color:var(--muted);margin-top:4px;}
+  .legend-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-top:12px;
+    font-size:.78rem;
+    color:var(--muted);
+  }
+  .legend-dot{
+    display:inline-block;
+    width:9px;height:9px;
+    border-radius:50%;
+    margin-right:5px;
+  }
+  .chart-wrap{
+    position:relative;
+    height:240px;
+    margin-top:6px;
+  }
+  .dash-empty{
+    color:var(--muted);
+    font-size:.85rem;
+    text-align:center;
+    padding:30px 10px;
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="brand">
-    <div class="brand-logo"><img src="logo.png" alt="Phattha logo"></div>
-    <div class="brand-text">
-      <h1>ระบบเบิกวัสดุบรรจุภัณฑ์</h1>
-      <p>กล่อง · เทปใส · บับเบิ้ล — ใช้งานได้บนมือถือ</p>
-    </div>
-  </div>
+  <h1>ระบบเบิกวัสดุบรรจุภัณฑ์</h1>
+  <p>กล่อง · เทปใส · บับเบิ้ล — ใช้งานได้บนมือถือ</p>
 </header>
 
 <div class="container">
+
+  <div class="tabbar">
+    <button type="button" class="tab-btn active" id="tabFormBtn">📝 เบิกของ</button>
+    <button type="button" class="tab-btn" id="tabDashBtn">📊 แดชบอร์ด</button>
+  </div>
 
   <div id="setupNote" class="setup-note">
     ⚠️ ยังไม่ได้ตั้งค่าปลายทางบันทึกข้อมูล กรุณาแก้ไขค่า <code>SCRIPT_URL</code> ในไฟล์นี้ให้เป็น URL ของ Google Apps Script Web App (ดูวิธีทำใน README.md)
   </div>
 
-  <form id="reqForm" class="card">
-    <h2>แบบฟอร์มเบิกของ</h2>
+  <!-- ===== แบบฟอร์มเบิกของ ===== -->
+  <div class="panel active" id="formPanel">
 
-    <label>ชื่อผู้เบิก <span class="required">*</span></label>
-    <input type="text" id="name" required placeholder="ชื่อ-นามสกุล">
+    <form id="reqForm" class="card">
+      <h2>แบบฟอร์มเบิกของ</h2>
 
-    <label>แผนก / ฝ่าย <span class="required">*</span></label>
-    <input type="text" id="department" required placeholder="เช่น คลังสินค้า, บัญชี">
+      <label>ชื่อผู้เบิก <span class="required">*</span></label>
+      <input type="text" id="name" required placeholder="ชื่อ-นามสกุล">
 
-    <label>วันที่ต้องการใช้ <span class="required">*</span></label>
-    <input type="date" id="dateNeeded" required>
+      <label>แผนก / ฝ่าย <span class="required">*</span></label>
+      <input type="text" id="department" required placeholder="เช่น คลังสินค้า, บัญชี">
 
-    <label>รายการที่ต้องการเบิก <span class="required">*</span></label>
-    <div class="items">
-      <div class="item-row" data-item="กล่อง">
-        <div class="item-left">
-          <input type="checkbox" class="item-check" data-name="กล่อง">
-          <div>
-            <div class="item-name">📦 กล่อง</div>
-            <div class="item-unit">หน่วย: ใบ</div>
+      <label>วันที่ต้องการใช้ <span class="required">*</span></label>
+      <input type="date" id="dateNeeded" required>
+
+      <label>รายการที่ต้องการเบิก <span class="required">*</span></label>
+      <div class="items">
+        <div class="item-row" data-item="กล่อง">
+          <div class="item-left">
+            <input type="checkbox" class="item-check" data-name="กล่อง" id="chk-box">
+            <div class="item-icon">📦</div>
+            <div class="item-text">
+              <div class="item-name">กล่อง</div>
+              <div class="item-unit">หน่วย: ใบ</div>
+            </div>
           </div>
+          <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
         </div>
-        <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+        <div class="item-row" data-item="เทปใส">
+          <div class="item-left">
+            <input type="checkbox" class="item-check" data-name="เทปใส" id="chk-tape">
+            <div class="item-icon">🎞️</div>
+            <div class="item-text">
+              <div class="item-name">เทปใส</div>
+              <div class="item-unit">หน่วย: ม้วน</div>
+            </div>
+          </div>
+          <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+        </div>
+        <div class="item-row" data-item="บับเบิ้ล">
+          <div class="item-left">
+            <input type="checkbox" class="item-check" data-name="บับเบิ้ล" id="chk-bubble">
+            <div class="item-icon">🫧</div>
+            <div class="item-text">
+              <div class="item-name">บับเบิ้ล</div>
+              <div class="item-unit">หน่วย: ม้วน</div>
+            </div>
+          </div>
+          <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+        </div>
       </div>
-      <div class="item-row" data-item="เทปใส">
-        <div class="item-left">
-          <input type="checkbox" class="item-check" data-name="เทปใส">
-          <div>
-            <div class="item-name">🎞️ เทปใส</div>
-            <div class="item-unit">หน่วย: ม้วน</div>
-          </div>
-        </div>
-        <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+      <div class="hint">แตะเลือกรายการ แล้วระบุจำนวนที่ต้องการเบิก (เลือกได้มากกว่า 1 รายการ)</div>
+
+      <label>หมายเหตุ / เหตุผลในการเบิก</label>
+      <textarea id="note" placeholder="ระบุเหตุผล หรือรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
+
+      <button type="submit" class="submit" id="submitBtn">ส่งคำขอเบิก</button>
+      <div id="msg" class="msg"></div>
+    </form>
+
+    <div class="card">
+      <h2>ประวัติการเบิกล่าสุด <button type="button" class="refresh-btn" id="refreshBtn">รีเฟรช</button></h2>
+      <div id="historyList">
+        <div class="history-empty">กำลังโหลด...</div>
       </div>
-      <div class="item-row" data-item="บับเบิ้ล">
-        <div class="item-left">
-          <input type="checkbox" class="item-check" data-name="บับเบิ้ล">
-          <div>
-            <div class="item-name">🫧 บับเบิ้ล</div>
-            <div class="item-unit">หน่วย: ม้วน</div>
-          </div>
+    </div>
+  </div>
+
+  <!-- ===== แดชบอร์ด ===== -->
+  <div class="panel" id="dashPanel">
+    <div class="card">
+      <h2>สรุปเดือนนี้</h2>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiRequests">–</div>
+          <div class="kpi-label">คำขอเดือนนี้</div>
         </div>
-        <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiQty">–</div>
+          <div class="kpi-label">จำนวนที่เบิกรวม</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiTop">–</div>
+          <div class="kpi-label">เบิกมากที่สุด</div>
+        </div>
       </div>
     </div>
 
-    <label>หมายเหตุ / เหตุผลในการเบิก</label>
-    <textarea id="note" placeholder="ระบุเหตุผล หรือรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
-
-    <button type="submit" class="submit" id="submitBtn">ส่งคำขอเบิก</button>
-  </form>
-
-  <div class="card">
-    <h2>ประวัติการเบิกล่าสุด <button type="button" class="refresh-btn" id="refreshBtn">รีเฟรช</button></h2>
-    <div id="historyList">
-      <div class="history-empty">กำลังโหลด...</div>
+    <div class="card">
+      <h2>ปริมาณการใช้รายเดือน <button type="button" class="refresh-btn" id="refreshDashBtn">รีเฟรช</button></h2>
+      <div id="dashChartWrap" class="chart-wrap">
+        <canvas id="usageChart"></canvas>
+      </div>
+      <div id="dashLegend" class="legend-row"></div>
+      <div id="dashEmpty" class="dash-empty" style="display:none;"></div>
     </div>
   </div>
 
@@ -320,58 +405,46 @@
 
 <footer>ระบบเบิกวัสดุบรรจุภัณฑ์ · ข้อมูลถูกบันทึกใน Google Sheet ขององค์กร</footer>
 
-<div id="modalOverlay" class="modal-overlay">
-  <div class="modal-box" id="modalBox">
-    <div class="modal-icon" id="modalIcon">✅</div>
-    <div class="modal-title" id="modalTitle"></div>
-    <div class="modal-text" id="modalText"></div>
-    <button type="button" class="modal-btn" id="modalCloseBtn">ตกลง</button>
-  </div>
-</div>
-
 <script>
   // ===== ตั้งค่าตรงนี้: วาง URL ของ Google Apps Script Web App ที่ deploy แล้ว =====
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWTTXTybmq0ArPGa-RjNJio2evN_N1lKqa4XW_9jC3DzvdyuN8J6LRzysvo9cOmF6-/exec";
+  const SCRIPT_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
   // ตัวอย่าง: https://script.google.com/macros/s/AKfycb.../exec
+
+  const ITEM_COLORS = { 'กล่อง': '#2563eb', 'เทปใส': '#16a34a', 'บับเบิ้ล': '#7c3aed' };
 
   const form = document.getElementById('reqForm');
   const submitBtn = document.getElementById('submitBtn');
+  const msg = document.getElementById('msg');
   const setupNote = document.getElementById('setupNote');
   const historyList = document.getElementById('historyList');
+  const isConfigured = SCRIPT_URL.indexOf('PASTE_YOUR') !== 0;
 
-  const modalOverlay = document.getElementById('modalOverlay');
-  const modalBox = document.getElementById('modalBox');
-  const modalIcon = document.getElementById('modalIcon');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalText = document.getElementById('modalText');
-  const modalCloseBtn = document.getElementById('modalCloseBtn');
-
-  if (!SCRIPT_URL || SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
+  if (!isConfigured) {
     setupNote.classList.add('show');
   }
 
-  // ป๊อปอัปแจ้งเตือนผลการส่งคำขอเบิก (แสดงทุกครั้งที่กดปุ่ม "ส่งคำขอเบิก")
-  function showModal(type, title, text) {
-    modalBox.classList.remove('success', 'error');
-    modalBox.classList.add(type);
-    modalIcon.textContent = type === 'success' ? '✅' : '⚠️';
-    modalTitle.textContent = title;
-    modalText.textContent = text;
-    modalOverlay.classList.add('show');
-    modalCloseBtn.focus();
-  }
-  function closeModal() {
-    modalOverlay.classList.remove('show');
-  }
-  modalCloseBtn.addEventListener('click', closeModal);
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) closeModal();
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
-  });
+  // ---- Tabs ----
+  const tabFormBtn = document.getElementById('tabFormBtn');
+  const tabDashBtn = document.getElementById('tabDashBtn');
+  const formPanel = document.getElementById('formPanel');
+  const dashPanel = document.getElementById('dashPanel');
+  let dashLoaded = false;
 
-  // toggle qty input when checkbox checked
+  function showTab(tab) {
+    const isForm = tab === 'form';
+    tabFormBtn.classList.toggle('active', isForm);
+    tabDashBtn.classList.toggle('active', !isForm);
+    formPanel.classList.toggle('active', isForm);
+    dashPanel.classList.toggle('active', !isForm);
+    if (!isForm && !dashLoaded) {
+      dashLoaded = true;
+      loadDashboard();
+    }
+  }
+  tabFormBtn.addEventListener('click', () => showTab('form'));
+  tabDashBtn.addEventListener('click', () => showTab('dash'));
+
+  // ---- toggle qty input when checkbox checked ----
   document.querySelectorAll('.item-row').forEach(row => {
     const check = row.querySelector('.item-check');
     const qty = row.querySelector('.qty-input');
@@ -387,8 +460,17 @@
     });
   });
 
+  function showMsg(text, type) {
+    msg.textContent = text;
+    msg.className = 'msg show ' + type;
+    if (type === 'success') {
+      setTimeout(() => { msg.className = 'msg'; }, 6000);
+    }
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    msg.className = 'msg';
 
     const items = [];
     document.querySelectorAll('.item-row').forEach(row => {
@@ -401,12 +483,12 @@
     });
 
     if (items.length === 0) {
-      showModal('error', 'กรอกข้อมูลไม่ครบ', 'กรุณาเลือกอย่างน้อย 1 รายการ และระบุจำนวนให้ถูกต้อง ก่อนส่งคำขอเบิก');
+      showMsg('กรุณาเลือกอย่างน้อย 1 รายการ และระบุจำนวน', 'error');
       return;
     }
 
-    if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
-      showModal('error', 'ยังไม่ได้ตั้งค่าระบบ', 'ยังไม่ได้ตั้งค่า SCRIPT_URL สำหรับบันทึกข้อมูล — ดูวิธีตั้งค่าใน README.md');
+    if (!isConfigured) {
+      showMsg('ยังไม่ได้ตั้งค่า SCRIPT_URL — ดูวิธีตั้งค่าใน README.md', 'error');
       return;
     }
 
@@ -429,14 +511,15 @@
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
       });
-      showModal('success', 'ส่งคำขอเบิกสำเร็จ', 'ระบบได้บันทึกคำขอเบิกของคุณเรียบร้อยแล้ว ทีมงานจะดำเนินการจัดเตรียมของให้ต่อไป');
+      showMsg('✅ ส่งคำขอเบิกเรียบร้อยแล้ว', 'success');
       form.reset();
       document.querySelectorAll('.qty-input').forEach(q => { q.disabled = true; q.value=''; });
       document.querySelectorAll('.item-row').forEach(r => r.classList.remove('active'));
       document.getElementById('dateNeeded').valueAsDate = new Date();
       loadHistory();
+      dashLoaded = false; // force dashboard refresh next time it's opened
     } catch (err) {
-      showModal('error', 'ส่งคำขอเบิกไม่สำเร็จ', 'เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองส่งคำขอใหม่อีกครั้ง');
+      showMsg('❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่', 'error');
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = 'ส่งคำขอเบิก';
@@ -444,7 +527,7 @@
   });
 
   async function loadHistory() {
-    if (SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
+    if (!isConfigured) {
       historyList.innerHTML = '<div class="history-empty">ตั้งค่า SCRIPT_URL ก่อนจึงจะแสดงประวัติได้</div>';
       return;
     }
@@ -473,10 +556,122 @@
     }[c]));
   }
 
+  // ---- Dashboard ----
+  let usageChart = null;
+
+  function monthLabel(ym) {
+    // ym = "yyyy-MM" -> "ม.ค. 69" style short Thai month/year (BE, 2 digit)
+    const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const [y, m] = ym.split('-').map(Number);
+    const beYear = (y + 543) % 100;
+    return THAI_MONTHS[m - 1] + ' ' + beYear;
+  }
+
+  async function loadDashboard() {
+    const wrap = document.getElementById('dashChartWrap');
+    const emptyEl = document.getElementById('dashEmpty');
+    const legendEl = document.getElementById('dashLegend');
+
+    if (!isConfigured) {
+      wrap.style.display = 'none';
+      legendEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'ตั้งค่า SCRIPT_URL ก่อนจึงจะแสดงแดชบอร์ดได้';
+      setKpi('–', '–', '–');
+      return;
+    }
+
+    try {
+      const res = await fetch(SCRIPT_URL + '?action=summary&months=6');
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'unknown error');
+      renderDashboard(data.summary);
+    } catch (err) {
+      wrap.style.display = 'none';
+      legendEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'ไม่สามารถโหลดข้อมูลแดชบอร์ดได้ในขณะนี้';
+      setKpi('–', '–', '–');
+    }
+  }
+
+  function setKpi(requests, qty, top) {
+    document.getElementById('kpiRequests').textContent = requests;
+    document.getElementById('kpiQty').textContent = qty;
+    document.getElementById('kpiTop').textContent = top;
+  }
+
+  function renderDashboard(summary) {
+    const wrap = document.getElementById('dashChartWrap');
+    const emptyEl = document.getElementById('dashEmpty');
+    const legendEl = document.getElementById('dashLegend');
+
+    const months = summary.months || [];
+    const itemNames = summary.itemNames || [];
+    const series = summary.series || {};
+
+    const hasData = itemNames.some(name => (series[name] || []).some(v => v > 0));
+
+    // KPIs
+    const thisIdx = months.length - 1;
+    let thisMonthQty = 0, topItem = '–', topQty = -1;
+    itemNames.forEach(name => {
+      const v = (series[name] || [])[thisIdx] || 0;
+      thisMonthQty += v;
+      if (v > topQty) { topQty = v; topItem = name; }
+    });
+    if (topQty <= 0) topItem = '–';
+    setKpi(summary.thisMonthRequests ?? 0, thisMonthQty, topItem);
+
+    if (!hasData) {
+      wrap.style.display = 'none';
+      legendEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'ยังไม่มีข้อมูลการเบิกในช่วง 6 เดือนล่าสุด';
+      return;
+    }
+
+    wrap.style.display = 'block';
+    emptyEl.style.display = 'none';
+
+    const labels = months.map(monthLabel);
+    const datasets = itemNames
+      .filter(name => (series[name] || []).some(v => v > 0) || ITEM_COLORS[name])
+      .map(name => ({
+        label: name,
+        data: series[name] || months.map(() => 0),
+        backgroundColor: ITEM_COLORS[name] || '#94a3b8',
+        borderRadius: 4,
+        maxBarThickness: 22
+      }));
+
+    legendEl.innerHTML = datasets.map(ds => `
+      <span><span class="legend-dot" style="background:${ds.backgroundColor}"></span>${escapeHtml(ds.label)}</span>
+    `).join('');
+
+    const ctx = document.getElementById('usageChart').getContext('2d');
+    if (usageChart) usageChart.destroy();
+    usageChart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
+  }
+
   // default date = today
   document.getElementById('dateNeeded').valueAsDate = new Date();
 
   document.getElementById('refreshBtn').addEventListener('click', loadHistory);
+  document.getElementById('refreshDashBtn').addEventListener('click', loadDashboard);
+
   loadHistory();
 </script>
 
