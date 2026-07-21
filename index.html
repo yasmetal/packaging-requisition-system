@@ -136,13 +136,6 @@
   }
   .item-name{font-weight:600;font-size:.95rem;}
   .item-unit{font-size:.75rem;color:var(--muted);}
-  .item-controls{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    flex:0 0 auto;
-    margin-left:auto;
-  }
   .item-row .qty-input{
     width:80px;
     flex:0 0 80px;
@@ -152,21 +145,79 @@
     border-radius:8px;
     font-size:1rem;
   }
-  .item-row .size-select{
-    width:98px;
-    flex:0 0 98px;
+  .item-row .qty-input:disabled{
+    background:#f3f4f6;
+    color:#9ca3af;
+  }
+  .item-multi{
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px;
+    background:#fafafa;
+  }
+  .item-multi .item-name{font-weight:600;font-size:.95rem;}
+  .item-multi .item-unit{font-size:.75rem;color:var(--muted);margin-bottom:2px;}
+  .size-rows{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-top:8px;
+  }
+  .size-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .size-row .size-select{
+    flex:1 1 auto;
+    min-width:0;
     padding:8px 6px;
     border:1px solid var(--border);
     border-radius:8px;
     font-size:.92rem;
     background:#fff;
   }
-  .item-row .size-select:disabled,
-  .item-row .qty-input:disabled{
-    background:#f3f4f6;
-    color:#9ca3af;
+  .size-row .qty-input{
+    width:76px;
+    flex:0 0 76px;
+    padding:8px;
+    text-align:center;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:1rem;
   }
+  .remove-size-btn{
+    flex:0 0 auto;
+    width:32px;height:32px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--danger);
+    font-size:.95rem;
+    line-height:1;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:inherit;
+  }
+  .remove-size-btn:active{background:#fef2f2;}
+  .add-size-btn{
+    margin-top:8px;
+    background:none;
+    border:1px dashed var(--primary);
+    color:var(--primary);
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:.85rem;
+    font-weight:700;
+    cursor:pointer;
+    width:100%;
+    font-family:inherit;
+  }
+  .add-size-btn:active{background:#eff6ff;}
   .required{color:var(--danger);}
+  .hint{font-size:.78rem;color:var(--muted);margin-top:6px;}
   button.submit{
     width:100%;
     padding:14px;
@@ -262,49 +313,11 @@
 
     <label>รายการที่ต้องการเบิก <span class="required">*</span></label>
     <div class="items">
-      <div class="item-row" data-item="กล่อง">
-        <div class="item-left">
-          <input type="checkbox" class="item-check" data-name="กล่อง">
-          <div>
-            <div class="item-name">📦 กล่อง</div>
-            <div class="item-unit">หน่วย: ใบ (ระบุขนาด)</div>
-          </div>
-        </div>
-        <div class="item-controls">
-          <select class="size-select" disabled>
-            <option value="" disabled selected>ขนาด</option>
-            <option value="0">0</option>
-            <option value="00">00</option>
-            <option value="0+4">0+4</option>
-            <option value="AA">AA</option>
-            <option value="A">A</option>
-            <option value="2A">2A</option>
-            <option value="B">B</option>
-            <option value="2B">2B</option>
-            <option value="C">C</option>
-            <option value="C+8">C+8</option>
-            <option value="D">D</option>
-            <option value="D+11">D+11</option>
-            <option value="2D">2D</option>
-            <option value="E">E</option>
-            <option value="F">F</option>
-            <option value="G">G</option>
-            <option value="7">7</option>
-            <option value="H">H</option>
-            <option value="I">I</option>
-            <option value="L">L</option>
-            <option value="M">M</option>
-            <option value="M+">M+</option>
-            <option value="AB">AB</option>
-            <option value="2C">2C</option>
-            <option value="2E">2E</option>
-            <option value="T5">T5</option>
-            <option value="P1">P1</option>
-            <option value="T3">T3</option>
-            <option value="2F">2F</option>
-          </select>
-          <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
-        </div>
+      <div class="item-multi" data-item="กล่อง">
+        <div class="item-name">📦 กล่อง</div>
+        <div class="item-unit">หน่วย: ใบ — เลือกได้หลายขนาด</div>
+        <div class="size-rows" data-rows-for="กล่อง"></div>
+        <button type="button" class="add-size-btn" data-add-for="กล่อง">+ เพิ่มขนาด</button>
       </div>
       <div class="item-row" data-item="เทปใส">
         <div class="item-left">
@@ -326,31 +339,14 @@
         </div>
         <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
       </div>
-      <div class="item-row" data-item="ถุงพลาสติก">
-        <div class="item-left">
-          <input type="checkbox" class="item-check" data-name="ถุงพลาสติก" id="chk-bag">
-          <div>
-            <div class="item-name">🛍️ ถุงพลาสติก</div>
-            <div class="item-unit">หน่วย: แพ็ค (ระบุเบอร์)</div>
-          </div>
-        </div>
-        <div class="item-controls">
-          <select class="size-select" disabled>
-            <option value="" disabled selected>เบอร์</option>
-            <option value="1">เบอร์ 1</option>
-            <option value="2">เบอร์ 2</option>
-            <option value="3">เบอร์ 3</option>
-            <option value="4">เบอร์ 4</option>
-            <option value="5">เบอร์ 5</option>
-            <option value="6">เบอร์ 6</option>
-            <option value="7">เบอร์ 7</option>
-            <option value="8">เบอร์ 8</option>
-            <option value="9">เบอร์ 9</option>
-          </select>
-          <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
-        </div>
+      <div class="item-multi" data-item="ถุงพลาสติก">
+        <div class="item-name">🛍️ ถุงพลาสติก</div>
+        <div class="item-unit">หน่วย: ใบ — เลือกได้หลายเบอร์</div>
+        <div class="size-rows" data-rows-for="ถุงพลาสติก"></div>
+        <button type="button" class="add-size-btn" data-add-for="ถุงพลาสติก">+ เพิ่มเบอร์</button>
       </div>
     </div>
+    <div class="hint">กล่องและถุงพลาสติกเลือกได้หลายขนาด/เบอร์ในคำขอเดียว — กด "+ เพิ่มขนาด" เพื่อเพิ่มรายการ</div>
 
     <label>หมายเหตุ / เหตุผลในการเบิก</label>
     <textarea id="note" placeholder="ระบุเหตุผล หรือรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
@@ -385,21 +381,87 @@
     setupNote.classList.add('show');
   }
 
-  // toggle qty input (and size select if present) when checkbox checked
+  // ---- รายการที่เลือกได้หลายขนาด/เบอร์ในคำขอเดียว (มัลติช้อยส์) ----
+  const SIZE_OPTIONS = {
+    'กล่อง': ['0','00','0+4','AA','A','2A','B','2B','C','C+8','D','D+11','2D','E','F','G','7','H','I','L','M','M+','AB','2C','2E','T5','P1','T3','2F'],
+    'ถุงพลาสติก': ['1','2','3','4','5','6','7','8','9']
+  };
+  const SIZE_OPTION_LABEL = {
+    'กล่อง': code => 'ขนาด ' + code,
+    'ถุงพลาสติก': code => 'เบอร์ ' + code
+  };
+  const SIZE_PLACEHOLDER = {
+    'กล่อง': 'เลือกขนาด',
+    'ถุงพลาสติก': 'เลือกเบอร์'
+  };
+
+  function createSizeRow(itemName) {
+    const row = document.createElement('div');
+    row.className = 'size-row';
+
+    const select = document.createElement('select');
+    select.className = 'size-select';
+    const placeholderOpt = document.createElement('option');
+    placeholderOpt.value = '';
+    placeholderOpt.disabled = true;
+    placeholderOpt.selected = true;
+    placeholderOpt.textContent = SIZE_PLACEHOLDER[itemName] || 'เลือกขนาด';
+    select.appendChild(placeholderOpt);
+    (SIZE_OPTIONS[itemName] || []).forEach(code => {
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = SIZE_OPTION_LABEL[itemName] ? SIZE_OPTION_LABEL[itemName](code) : code;
+      select.appendChild(opt);
+    });
+
+    const qty = document.createElement('input');
+    qty.type = 'number';
+    qty.className = 'qty-input';
+    qty.min = '1';
+    qty.placeholder = 'จำนวน';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'remove-size-btn';
+    removeBtn.setAttribute('aria-label', 'ลบรายการนี้');
+    removeBtn.textContent = '✕';
+    removeBtn.addEventListener('click', () => row.remove());
+
+    row.appendChild(select);
+    row.appendChild(qty);
+    row.appendChild(removeBtn);
+    return row;
+  }
+
+  function resetSizeRows() {
+    document.querySelectorAll('.item-multi').forEach(block => {
+      const itemName = block.dataset.item;
+      const rowsWrap = block.querySelector('.size-rows');
+      rowsWrap.innerHTML = '';
+      rowsWrap.appendChild(createSizeRow(itemName));
+    });
+  }
+
+  document.querySelectorAll('.item-multi').forEach(block => {
+    const itemName = block.dataset.item;
+    block.querySelector('.add-size-btn').addEventListener('click', () => {
+      block.querySelector('.size-rows').appendChild(createSizeRow(itemName));
+    });
+  });
+  resetSizeRows(); // เริ่มต้นด้วย 1 แถวต่อรายการ
+
+  // toggle qty input สำหรับรายการแบบไม่มีขนาด (เทปใส / บับเบิ้ล)
   document.querySelectorAll('.item-row').forEach(row => {
     const check = row.querySelector('.item-check');
     const qty = row.querySelector('.qty-input');
-    const size = row.querySelector('.size-select');
     check.addEventListener('change', () => {
       qty.disabled = !check.checked;
-      if (size) size.disabled = !check.checked;
       row.classList.toggle('active', check.checked);
       if (check.checked) {
         qty.value = qty.value || 1;
-        if (size && !size.value) { size.focus(); } else { qty.focus(); }
+        qty.focus();
       } else {
         qty.value = '';
-        if (size) size.selectedIndex = 0;
       }
     });
   });
@@ -414,24 +476,34 @@
     msg.className = 'msg';
 
     const items = [];
-    const missingSizeNames = [];
+    const incompleteNames = [];
+
+    // รายการแบบเลือกได้หลายขนาด (กล่อง / ถุงพลาสติก)
+    document.querySelectorAll('.item-multi').forEach(block => {
+      const itemName = block.dataset.item;
+      block.querySelectorAll('.size-row').forEach(row => {
+        const size = row.querySelector('.size-select').value;
+        const qtyVal = row.querySelector('.qty-input').value;
+        const qty = parseInt(qtyVal, 10);
+        if (!size && !qtyVal) return; // แถวว่าง ข้ามไป
+        if (!size || !(qty > 0)) { incompleteNames.push(itemName); return; }
+        items.push({ name: itemName, size: size, qty: qty });
+      });
+    });
+
+    // รายการแบบไม่มีขนาด (เทปใส / บับเบิ้ล)
     document.querySelectorAll('.item-row').forEach(row => {
       const check = row.querySelector('.item-check');
       const qty = row.querySelector('.qty-input');
-      const size = row.querySelector('.size-select');
       if (check.checked) {
-        if (size && !size.value) { missingSizeNames.push(check.dataset.name); return; }
         const q = parseInt(qty.value, 10);
-        if (q > 0) {
-          const item = { name: check.dataset.name, qty: q };
-          if (size) item.size = size.value;
-          items.push(item);
-        }
+        if (q > 0) items.push({ name: check.dataset.name, qty: q });
       }
     });
 
-    if (missingSizeNames.length > 0) {
-      showMsg('กรุณาเลือกขนาด/เบอร์ของ: ' + missingSizeNames.join(', '), 'error');
+    if (incompleteNames.length > 0) {
+      const uniqueNames = incompleteNames.filter((n, i) => incompleteNames.indexOf(n) === i);
+      showMsg('กรุณาเลือกขนาด/เบอร์ และระบุจำนวนให้ครบสำหรับ: ' + uniqueNames.join(', '), 'error');
       return;
     }
 
@@ -466,9 +538,10 @@
       });
       showMsg('✅ ส่งคำขอเบิกเรียบร้อยแล้ว', 'success');
       form.reset();
-      document.querySelectorAll('.qty-input').forEach(q => { q.disabled = true; q.value=''; });
-      document.querySelectorAll('.size-select').forEach(s => { s.disabled = true; s.selectedIndex = 0; });
+      document.querySelectorAll('.item-row .qty-input').forEach(q => { q.disabled = true; q.value=''; });
       document.querySelectorAll('.item-row').forEach(r => r.classList.remove('active'));
+      resetSizeRows();
+      document.getElementById('dateNeeded').valueAsDate = new Date();
       loadHistory();
     } catch (err) {
       showMsg('❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่', 'error');
