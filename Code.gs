@@ -26,8 +26,10 @@ function getSheet_() {
 }
 
 function itemLabel_(item) {
-  // ถุงพลาสติก (และรายการอื่นที่มีการระบุ size ในอนาคต) จะแสดงเบอร์ต่อท้ายชื่อ
-  return item.size ? `${item.name} เบอร์${item.size}` : item.name;
+  // แต่ละรายการที่มีการระบุ size จะแสดงคำต่อท้ายชื่อให้เหมาะสมกับรายการนั้น
+  if (!item.size) return item.name;
+  if (item.name === 'ถุงพลาสติก') return `${item.name} เบอร์${item.size}`;
+  return `${item.name} ขนาด${item.size}`;
 }
 
 function doPost(e) {

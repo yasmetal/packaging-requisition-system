@@ -267,10 +267,44 @@
           <input type="checkbox" class="item-check" data-name="กล่อง">
           <div>
             <div class="item-name">📦 กล่อง</div>
-            <div class="item-unit">หน่วย: ใบ</div>
+            <div class="item-unit">หน่วย: ใบ (ระบุขนาด)</div>
           </div>
         </div>
-        <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+        <div class="item-controls">
+          <select class="size-select" disabled>
+            <option value="" disabled selected>ขนาด</option>
+            <option value="0">0</option>
+            <option value="00">00</option>
+            <option value="0+4">0+4</option>
+            <option value="AA">AA</option>
+            <option value="A">A</option>
+            <option value="2A">2A</option>
+            <option value="B">B</option>
+            <option value="2B">2B</option>
+            <option value="C">C</option>
+            <option value="C+8">C+8</option>
+            <option value="D">D</option>
+            <option value="D+11">D+11</option>
+            <option value="2D">2D</option>
+            <option value="E">E</option>
+            <option value="F">F</option>
+            <option value="G">G</option>
+            <option value="7">7</option>
+            <option value="H">H</option>
+            <option value="I">I</option>
+            <option value="L">L</option>
+            <option value="M">M</option>
+            <option value="M+">M+</option>
+            <option value="AB">AB</option>
+            <option value="2C">2C</option>
+            <option value="2E">2E</option>
+            <option value="T5">T5</option>
+            <option value="P1">P1</option>
+            <option value="T3">T3</option>
+            <option value="2F">2F</option>
+          </select>
+          <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+        </div>
       </div>
       <div class="item-row" data-item="เทปใส">
         <div class="item-left">
@@ -380,13 +414,13 @@
     msg.className = 'msg';
 
     const items = [];
-    let sizeMissing = false;
+    const missingSizeNames = [];
     document.querySelectorAll('.item-row').forEach(row => {
       const check = row.querySelector('.item-check');
       const qty = row.querySelector('.qty-input');
       const size = row.querySelector('.size-select');
       if (check.checked) {
-        if (size && !size.value) { sizeMissing = true; return; }
+        if (size && !size.value) { missingSizeNames.push(check.dataset.name); return; }
         const q = parseInt(qty.value, 10);
         if (q > 0) {
           const item = { name: check.dataset.name, qty: q };
@@ -396,8 +430,8 @@
       }
     });
 
-    if (sizeMissing) {
-      showMsg('กรุณาเลือกเบอร์ของถุงพลาสติก', 'error');
+    if (missingSizeNames.length > 0) {
+      showMsg('กรุณาเลือกขนาด/เบอร์ของ: ' + missingSizeNames.join(', '), 'error');
       return;
     }
 
