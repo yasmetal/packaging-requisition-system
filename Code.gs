@@ -25,6 +25,11 @@ function getSheet_() {
   return sheet;
 }
 
+function itemLabel_(item) {
+  // ถุงพลาสติก (และรายการอื่นที่มีการระบุ size ในอนาคต) จะแสดงเบอร์ต่อท้ายชื่อ
+  return item.size ? `${item.name} เบอร์${item.size}` : item.name;
+}
+
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
@@ -39,7 +44,7 @@ function doPost(e) {
       return jsonResponse_({ ok: false, error: 'missing required fields' });
     }
 
-    const itemsSummary = items.map(i => `${i.name} x${i.qty}`).join(', ');
+    const itemsSummary = items.map(i => `${itemLabel_(i)} x${i.qty}`).join(', ');
 
     const sheet = getSheet_();
     sheet.appendRow([
@@ -88,6 +93,7 @@ function doGet(e) {
 
 /**
  * รวมยอดจำนวนการเบิกแต่ละรายการ แยกตามเดือน (ย้อนหลัง N เดือน รวมเดือนปัจจุบัน)
+ * หมายเหตุ: ถุงพลาสติกทุกเบอร์จะถูกรวมเป็นรายการ "ถุงพลาสติก" รายการเดียว (ไม่แยกตามเบอร์)
  * คืนค่า { months: ["2026-02", ...], itemNames: [...], series: {itemName: [qty,...]}, totals: {...}, totalRequests, thisMonthRequests }
  */
 function getMonthlySummary_(monthsBack) {
@@ -104,10 +110,10 @@ function getMonthlySummary_(monthsBack) {
     monthKeys.push(Utilities.formatDate(d, tz, 'yyyy-MM'));
   }
 
-  const itemNames = ['กล่อง', 'เทปใส', 'บับเบิ้ล'];
+  const itemNames = ['กล่อง', 'เทปใส', 'บับเบิ้ล', 'ถุงพลาสติก'];
   const series = {};
   itemNames.forEach(n => { series[n] = monthKeys.map(() => 0); });
-  const totals = { 'กล่อง': 0, 'เทปใส': 0, 'บับเบิ้ล': 0 };
+  const totals = { 'กล่อง': 0, 'เทปใส': 0, 'บับเบิ้ล': 0, 'ถุงพลาสติก': 0 };
   const thisMonthKey = monthKeys[monthKeys.length - 1];
   let totalRequests = 0;
   let thisMonthRequests = 0;
@@ -124,7 +130,7 @@ function getMonthlySummary_(monthsBack) {
     if (monthKey === thisMonthKey) thisMonthRequests++;
 
     items.forEach(it => {
-      const name = it.name;
+      const name = it.name; // รวมทุกเบอร์ของถุงพลาสติกเป็นรายการเดียว
       const qty = Number(it.qty) || 0;
       if (!series[name]) { series[name] = monthKeys.map(() => 0); itemNames.push(name); totals[name] = 0; }
       if (idx >= 0) series[name][idx] += qty;
