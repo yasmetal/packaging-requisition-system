@@ -84,8 +84,9 @@ function doGet(e) {
       return jsonResponse_({ ok: true, rows: rows });
     }
     if (action === 'summary') {
-      const months = parseInt(e.parameter.months, 10) || 6;
-      return jsonResponse_({ ok: true, summary: getMonthlySummary_(months) });
+      // months: จำนวนเดือนย้อนหลัง (ตัวเลข) หรือ "all" เพื่อดูตั้งแต่รายการแรกสุด
+      const monthsParam = e.parameter.months === 'all' ? 'all' : (parseInt(e.parameter.months, 10) || 6);
+      return jsonResponse_({ ok: true, summary: getMonthlySummary_(monthsParam) });
     }
     return jsonResponse_({ ok: true, message: 'ระบบเบิกวัสดุบรรจุภัณฑ์ API ทำงานปกติ' });
   } catch (err) {
@@ -94,29 +95,52 @@ function doGet(e) {
 }
 
 /**
- * รวมยอดจำนวนการเบิกแต่ละรายการ แยกตามเดือน (ย้อนหลัง N เดือน รวมเดือนปัจจุบัน)
+ * รวมยอดจำนวนการเบิกแต่ละรายการ แยกตามเดือน
+ * monthsParam: จำนวนเดือนย้อนหลัง (รวมเดือนปัจจุบัน) หรือ 'all' เพื่อไล่ตั้งแต่เดือนของรายการแรกสุดในชีต
  * หมายเหตุ: ถุงพลาสติกทุกเบอร์จะถูกรวมเป็นรายการ "ถุงพลาสติก" รายการเดียว (ไม่แยกตามเบอร์)
- * คืนค่า { months: ["2026-02", ...], itemNames: [...], series: {itemName: [qty,...]}, totals: {...}, totalRequests, thisMonthRequests }
+ * คืนค่า { months: ["2026-02", ...], itemNames: [...], series: {itemName: [qty,...]}, totals: {...},
+ *          totalRequests, thisMonthRequests, requestsByMonth: [n, ...] }
  */
-function getMonthlySummary_(monthsBack) {
+function getMonthlySummary_(monthsParam) {
   const tz = Session.getScriptTimeZone();
   const sheet = getSheet_();
   const values = sheet.getDataRange().getValues();
   values.shift(); // remove header
 
-  // build ordered list of month keys, oldest -> newest, ending at current month
   const now = new Date();
   const monthKeys = [];
-  for (let i = monthsBack - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    monthKeys.push(Utilities.formatDate(d, tz, 'yyyy-MM'));
+
+  if (monthsParam === 'all') {
+    // หาเดือนที่เก่าที่สุดจากข้อมูลจริง แล้วไล่มาจนถึงเดือนปัจจุบัน
+    let earliest = now;
+    values.forEach(row => {
+      const ts = row[0];
+      if (ts instanceof Date && ts < earliest) earliest = ts;
+    });
+    const start = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+    let cursor = start;
+    while (cursor <= end) {
+      monthKeys.push(Utilities.formatDate(cursor, tz, 'yyyy-MM'));
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    }
+    if (monthKeys.length === 0) {
+      monthKeys.push(Utilities.formatDate(now, tz, 'yyyy-MM'));
+    }
+  } else {
+    const monthsBack = monthsParam;
+    for (let i = monthsBack - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthKeys.push(Utilities.formatDate(d, tz, 'yyyy-MM'));
+    }
   }
 
   const itemNames = ['กล่อง', 'เทปใส', 'บับเบิ้ล', 'ถุงพลาสติก'];
   const series = {};
   itemNames.forEach(n => { series[n] = monthKeys.map(() => 0); });
   const totals = { 'กล่อง': 0, 'เทปใส': 0, 'บับเบิ้ล': 0, 'ถุงพลาสติก': 0 };
-  const thisMonthKey = monthKeys[monthKeys.length - 1];
+  const requestsByMonth = monthKeys.map(() => 0);
+  const thisMonthKey = Utilities.formatDate(now, tz, 'yyyy-MM');
   let totalRequests = 0;
   let thisMonthRequests = 0;
 
@@ -130,6 +154,7 @@ function getMonthlySummary_(monthsBack) {
 
     totalRequests++;
     if (monthKey === thisMonthKey) thisMonthRequests++;
+    if (idx >= 0) requestsByMonth[idx]++;
 
     items.forEach(it => {
       const name = it.name; // รวมทุกเบอร์ของถุงพลาสติกเป็นรายการเดียว
@@ -146,7 +171,8 @@ function getMonthlySummary_(monthsBack) {
     series: series,
     totals: totals,
     totalRequests: totalRequests,
-    thisMonthRequests: thisMonthRequests
+    thisMonthRequests: thisMonthRequests,
+    requestsByMonth: requestsByMonth
   };
 }
 

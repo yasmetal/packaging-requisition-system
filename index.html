@@ -6,279 +6,416 @@
 <title>ระบบเบิกวัสดุบรรจุภัณฑ์</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  :root{
-    --primary:#2563eb;
-    --primary-dark:#1d4ed8;
-    --bg:#f3f4f6;
-    --card:#ffffff;
-    --text:#111827;
-    --muted:#6b7280;
-    --border:#e5e7eb;
-    --success:#16a34a;
-    --danger:#dc2626;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    font-family:'Segoe UI', 'Sarabun', -apple-system, BlinkMacSystemFont, sans-serif;
-    background:var(--bg);
-    color:var(--text);
-    padding-bottom:40px;
-  }
-  header{
-    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
-    color:#fff;
-    padding:22px 16px 34px;
-    text-align:center;
-  }
-  .brand{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:12px;
-    margin-bottom:2px;
-  }
-  .brand-logo{
-    flex:0 0 auto;
-    width:52px;
-    height:52px;
-    background:#fff;
-    border-radius:14px;
-    box-shadow:0 3px 10px rgba(0,0,0,.18);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:6px;
-  }
-  .brand-logo img{
-    width:100%;
-    height:100%;
-    object-fit:contain;
-  }
-  .brand-text{text-align:left;}
-  header h1{margin:0 0 4px;font-size:1.25rem;line-height:1.25;}
-  header p{margin:0;font-size:.85rem;opacity:.9;}
-  .container{
-    max-width:560px;
-    margin:-20px auto 0;
-    padding:0 16px;
-  }
-  .card{
-    background:var(--card);
-    border-radius:14px;
-    box-shadow:0 4px 16px rgba(0,0,0,.08);
-    padding:20px;
-    margin-bottom:16px;
-  }
-  .card h2{
-    font-size:1.05rem;
-    margin:0 0 14px;
-    border-left:4px solid var(--primary);
-    padding-left:10px;
-  }
-  label{
-    display:block;
-    font-size:.88rem;
-    font-weight:600;
-    margin:14px 0 6px;
-  }
-  input[type=text],
-  input[type=date],
-  input[type=number],
-  textarea,
-  select{
-    width:100%;
-    padding:11px 12px;
-    border:1px solid var(--border);
-    border-radius:9px;
-    font-size:1rem;
-    font-family:inherit;
-    background:#fafafa;
-  }
-  input:focus, textarea:focus, select:focus{
-    outline:none;
-    border-color:var(--primary);
-    background:#fff;
-  }
-  textarea{resize:vertical;min-height:70px;}
-  .items{
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-    margin-top:6px;
-  }
-  .item-row{
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    justify-content:space-between;
-    gap:8px 10px;
-    border:1px solid var(--border);
-    border-radius:10px;
-    padding:12px;
-    background:#fafafa;
-  }
-  .item-row.active{
-    border-color:var(--primary);
-    background:#eff6ff;
-  }
-  .item-left{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    flex:1 1 auto;
-    min-width:0;
-  }
-  .item-left input[type=checkbox]{
-    width:20px;height:20px;
-    accent-color:var(--primary);
-  }
-  .item-name{font-weight:600;font-size:.95rem;}
-  .item-unit{font-size:.75rem;color:var(--muted);}
-  .item-row .qty-input{
-    width:80px;
-    flex:0 0 80px;
-    padding:8px;
-    text-align:center;
-    border:1px solid var(--border);
-    border-radius:8px;
-    font-size:1rem;
-  }
-  .item-row .qty-input:disabled{
-    background:#f3f4f6;
-    color:#9ca3af;
-  }
-  .item-multi{
-    border:1px solid var(--border);
-    border-radius:10px;
-    padding:12px;
-    background:#fafafa;
-  }
-  .item-multi .item-name{font-weight:600;font-size:.95rem;}
-  .item-multi .item-unit{font-size:.75rem;color:var(--muted);margin-bottom:2px;}
-  .size-rows{
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-    margin-top:8px;
-  }
-  .size-row{
-    display:flex;
-    align-items:center;
-    gap:8px;
-  }
-  .size-row .size-select{
-    flex:1 1 auto;
-    min-width:0;
-    padding:8px 6px;
-    border:1px solid var(--border);
-    border-radius:8px;
-    font-size:.92rem;
-    background:#fff;
-  }
-  .size-row .qty-input{
-    width:76px;
-    flex:0 0 76px;
-    padding:8px;
-    text-align:center;
-    border:1px solid var(--border);
-    border-radius:8px;
-    font-size:1rem;
-  }
-  .remove-size-btn{
-    flex:0 0 auto;
-    width:32px;height:32px;
-    border-radius:8px;
-    border:1px solid var(--border);
-    background:#fff;
-    color:var(--danger);
-    font-size:.95rem;
-    line-height:1;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-family:inherit;
-  }
-  .remove-size-btn:active{background:#fef2f2;}
-  .add-size-btn{
-    margin-top:8px;
-    background:none;
-    border:1px dashed var(--primary);
-    color:var(--primary);
-    border-radius:8px;
-    padding:8px 12px;
-    font-size:.85rem;
-    font-weight:700;
-    cursor:pointer;
-    width:100%;
-    font-family:inherit;
-  }
-  .add-size-btn:active{background:#eff6ff;}
-  .required{color:var(--danger);}
-  .hint{font-size:.78rem;color:var(--muted);margin-top:6px;}
-  button.submit{
-    width:100%;
-    padding:14px;
-    margin-top:18px;
-    background:var(--primary);
-    color:#fff;
-    border:none;
-    border-radius:10px;
-    font-size:1rem;
-    font-weight:700;
-    cursor:pointer;
-    transition:background .15s;
-  }
-  button.submit:active{background:var(--primary-dark);}
-  button.submit:disabled{background:#9ca3af;cursor:not-allowed;}
-  .msg{
-    margin-top:12px;
-    padding:12px;
-    border-radius:9px;
-    font-size:.9rem;
-    display:none;
-  }
-  .msg.show{display:block;}
-  .msg.success{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0;}
-  .msg.error{background:#fef2f2;color:var(--danger);border:1px solid #fecaca;}
-  .history-item{
-    border-bottom:1px solid var(--border);
-    padding:10px 0;
-    font-size:.85rem;
-  }
-  .history-item:last-child{border-bottom:none;}
-  .history-top{display:flex;justify-content:space-between;font-weight:600;}
-  .history-items{color:var(--muted);margin-top:2px;}
-  .history-empty{color:var(--muted);font-size:.85rem;text-align:center;padding:10px 0;}
-  .setup-note{
-    background:#fffbeb;
-    border:1px solid #fde68a;
-    color:#92400e;
-    padding:12px;
-    border-radius:9px;
-    font-size:.82rem;
-    margin-bottom:16px;
-    display:none;
-  }
-  .setup-note.show{display:block;}
-  footer{
-    text-align:center;
-    font-size:.75rem;
-    color:var(--muted);
-    margin-top:20px;
-  }
-  .refresh-btn{
-    background:none;
-    border:1px solid var(--border);
-    border-radius:8px;
-    padding:6px 12px;
-    font-size:.8rem;
-    color:var(--primary);
-    cursor:pointer;
-    float:right;
-  }
+:root{
+--primary:#2563eb;
+--primary-dark:#1d4ed8;
+--primary-light:#eff6ff;
+--bg:#f3f4f6;
+--card:#ffffff;
+--text:#111827;
+--muted:#6b7280;
+--border:#e5e7eb;
+--success:#16a34a;
+--danger:#dc2626;
+--accent2:#16a34a;
+--accent3:#7c3aed;
+--accent4:#ea580c;
+}
+*{box-sizing:border-box;}
+body{
+margin:0;
+font-family:'Segoe UI', 'Sarabun', -apple-system, BlinkMacSystemFont, sans-serif;
+background:var(--bg);
+color:var(--text);
+padding-bottom:40px;
+}
+header{
+background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+color:#fff;
+padding:22px 16px 34px;
+text-align:center;
+}
+.brand{
+display:flex;
+align-items:center;
+justify-content:center;
+gap:12px;
+margin-bottom:2px;
+}
+.brand-logo{
+flex:0 0 auto;
+width:52px;
+height:52px;
+background:#fff;
+border-radius:14px;
+box-shadow:0 3px 10px rgba(0,0,0,.18);
+display:flex;
+align-items:center;
+justify-content:center;
+padding:6px;
+}
+.brand-logo img{
+width:100%;
+height:100%;
+object-fit:contain;
+}
+.brand-text{text-align:left;}
+header h1{margin:0 0 4px;font-size:1.25rem;line-height:1.25;}
+header p{margin:0;font-size:.85rem;opacity:.9;}
+.container{
+max-width:560px;
+margin:0 auto;
+padding:0 16px;
+}
+
+/* Tab bar */
+.tabbar{
+display:flex;
+gap:6px;
+background:var(--card);
+border-radius:14px;
+padding:5px;
+box-shadow:0 6px 18px rgba(17,24,39,.12);
+margin-top:-20px;
+margin-bottom:16px;
+position:relative;
+z-index:2;
+}
+.tab-btn{
+flex:1;
+display:flex;
+align-items:center;
+justify-content:center;
+gap:6px;
+padding:11px 8px;
+border-radius:10px;
+border:none;
+background:transparent;
+font-weight:700;
+font-size:.88rem;
+color:var(--muted);
+cursor:pointer;
+font-family:inherit;
+transition:background .15s, color .15s;
+}
+.tab-btn.active{
+background:var(--primary);
+color:#fff;
+box-shadow:0 3px 8px rgba(37,99,235,.35);
+}
+
+.panel{display:none;}
+.panel.active{display:block;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+.card{
+background:var(--card);
+border-radius:14px;
+box-shadow:0 4px 16px rgba(0,0,0,.08);
+padding:20px;
+margin-bottom:16px;
+}
+.card h2{
+font-size:1.05rem;
+margin:0 0 14px;
+border-left:4px solid var(--primary);
+padding-left:10px;
+display:flex;
+align-items:center;
+justify-content:space-between;
+flex-wrap:wrap;
+gap:8px;
+}
+label{
+display:block;
+font-size:.88rem;
+font-weight:600;
+margin:14px 0 6px;
+}
+input[type=text],
+input[type=date],
+input[type=number],
+textarea,
+select{
+width:100%;
+padding:11px 12px;
+border:1px solid var(--border);
+border-radius:9px;
+font-size:1rem;
+font-family:inherit;
+background:#fafafa;
+}
+input:focus, textarea:focus, select:focus{
+outline:none;
+border-color:var(--primary);
+background:#fff;
+}
+textarea{resize:vertical;min-height:70px;}
+.items{
+display:flex;
+flex-direction:column;
+gap:10px;
+margin-top:6px;
+}
+.item-row{
+display:flex;
+flex-wrap:wrap;
+align-items:center;
+justify-content:space-between;
+gap:8px 10px;
+border:1px solid var(--border);
+border-radius:10px;
+padding:12px;
+background:#fafafa;
+}
+.item-row.active{
+border-color:var(--primary);
+background:#eff6ff;
+}
+.item-left{
+display:flex;
+align-items:center;
+gap:10px;
+flex:1 1 auto;
+min-width:0;
+}
+.item-left input[type=checkbox]{
+width:20px;height:20px;
+accent-color:var(--primary);
+}
+.item-name{font-weight:600;font-size:.95rem;}
+.item-unit{font-size:.75rem;color:var(--muted);}
+.item-row .qty-input{
+width:80px;
+flex:0 0 80px;
+padding:8px;
+text-align:center;
+border:1px solid var(--border);
+border-radius:8px;
+font-size:1rem;
+}
+.item-row .qty-input:disabled{
+background:#f3f4f6;
+color:#9ca3af;
+}
+.item-multi{
+border:1px solid var(--border);
+border-radius:10px;
+padding:12px;
+background:#fafafa;
+}
+.item-multi .item-name{font-weight:600;font-size:.95rem;}
+.item-multi .item-unit{font-size:.75rem;color:var(--muted);margin-bottom:2px;}
+.size-rows{
+display:flex;
+flex-direction:column;
+gap:8px;
+margin-top:8px;
+}
+.size-row{
+display:flex;
+align-items:center;
+gap:8px;
+}
+.size-row .size-select{
+flex:1 1 auto;
+min-width:0;
+padding:8px 6px;
+border:1px solid var(--border);
+border-radius:8px;
+font-size:.92rem;
+background:#fff;
+}
+.size-row .qty-input{
+width:76px;
+flex:0 0 76px;
+padding:8px;
+text-align:center;
+border:1px solid var(--border);
+border-radius:8px;
+font-size:1rem;
+}
+.remove-size-btn{
+flex:0 0 auto;
+width:32px;height:32px;
+border-radius:8px;
+border:1px solid var(--border);
+background:#fff;
+color:var(--danger);
+font-size:.95rem;
+line-height:1;
+cursor:pointer;
+display:flex;
+align-items:center;
+justify-content:center;
+font-family:inherit;
+}
+.remove-size-btn:active{background:#fef2f2;}
+.add-size-btn{
+margin-top:8px;
+background:none;
+border:1px dashed var(--primary);
+color:var(--primary);
+border-radius:8px;
+padding:8px 12px;
+font-size:.85rem;
+font-weight:700;
+cursor:pointer;
+width:100%;
+font-family:inherit;
+}
+.add-size-btn:active{background:#eff6ff;}
+.required{color:var(--danger);}
+.hint{font-size:.78rem;color:var(--muted);margin-top:6px;}
+button.submit{
+width:100%;
+padding:14px;
+margin-top:18px;
+background:var(--primary);
+color:#fff;
+border:none;
+border-radius:10px;
+font-size:1rem;
+font-weight:700;
+cursor:pointer;
+transition:background .15s;
+}
+button.submit:active{background:var(--primary-dark);}
+button.submit:disabled{background:#9ca3af;cursor:not-allowed;}
+.msg{
+margin-top:12px;
+padding:12px;
+border-radius:9px;
+font-size:.9rem;
+display:none;
+}
+.msg.show{display:block;}
+.msg.success{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0;}
+.msg.error{background:#fef2f2;color:var(--danger);border:1px solid #fecaca;}
+.history-item{
+border-bottom:1px solid var(--border);
+padding:10px 0;
+font-size:.85rem;
+}
+.history-item:last-child{border-bottom:none;}
+.history-top{display:flex;justify-content:space-between;font-weight:600;}
+.history-items{color:var(--muted);margin-top:2px;}
+.history-empty{color:var(--muted);font-size:.85rem;text-align:center;padding:10px 0;}
+.setup-note{
+background:#fffbeb;
+border:1px solid #fde68a;
+color:#92400e;
+padding:12px;
+border-radius:9px;
+font-size:.82rem;
+margin-bottom:16px;
+display:none;
+}
+.setup-note.show{display:block;}
+footer{
+text-align:center;
+font-size:.75rem;
+color:var(--muted);
+margin-top:20px;
+}
+.refresh-btn{
+background:none;
+border:1px solid var(--border);
+border-radius:8px;
+padding:6px 12px;
+font-size:.78rem;
+color:var(--primary);
+cursor:pointer;
+font-family:inherit;
+}
+
+/* Dashboard */
+.period-select{
+width:auto;
+padding:7px 10px;
+border:1px solid var(--border);
+border-radius:8px;
+font-size:.78rem;
+background:#fff;
+color:var(--text);
+font-family:inherit;
+}
+.kpi-grid{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:10px;
+margin-bottom:16px;
+}
+.kpi-card{
+background:var(--card);
+border-radius:14px;
+padding:14px 8px;
+text-align:center;
+box-shadow:0 4px 16px rgba(0,0,0,.06);
+}
+.kpi-value{font-size:1.3rem;font-weight:800;color:var(--primary);line-height:1.2;}
+.kpi-label{font-size:.68rem;color:var(--muted);margin-top:4px;}
+.legend-row{
+display:flex;
+flex-wrap:wrap;
+gap:12px;
+margin-top:12px;
+font-size:.78rem;
+color:var(--muted);
+}
+.legend-dot{
+display:inline-block;
+width:9px;height:9px;
+border-radius:50%;
+margin-right:5px;
+}
+.chart-scroll{
+overflow-x:auto;
+}
+.chart-wrap{
+position:relative;
+height:240px;
+margin-top:6px;
+}
+.dash-empty{
+color:var(--muted);
+font-size:.85rem;
+text-align:center;
+padding:30px 10px;
+}
+.table-wrap{
+overflow:auto;
+max-height:340px;
+margin-top:10px;
+border:1px solid var(--border);
+border-radius:10px;
+}
+table.monthly-table{
+width:100%;
+border-collapse:collapse;
+font-size:.8rem;
+white-space:nowrap;
+}
+table.monthly-table th, table.monthly-table td{
+padding:9px 10px;
+text-align:right;
+border-bottom:1px solid var(--border);
+}
+table.monthly-table th:first-child, table.monthly-table td:first-child{
+text-align:left;
+}
+table.monthly-table thead th{
+position:sticky;
+top:0;
+background:var(--primary-light);
+color:var(--primary-dark);
+font-weight:700;
+z-index:1;
+}
+table.monthly-table tbody tr:last-child td{border-bottom:none;}
+table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
 </style>
 </head>
 <body>
@@ -295,70 +432,143 @@
 
 <div class="container">
 
+  <div class="tabbar">
+    <button type="button" class="tab-btn active" id="tabFormBtn">📝 เบิกของ</button>
+    <button type="button" class="tab-btn" id="tabDashBtn">📊 แดชบอร์ด</button>
+  </div>
+
   <div id="setupNote" class="setup-note">
     ⚠️ ยังไม่ได้ตั้งค่าปลายทางบันทึกข้อมูล กรุณาแก้ไขค่า <code>SCRIPT_URL</code> ในไฟล์นี้ให้เป็น URL ของ Google Apps Script Web App (ดูวิธีทำใน README.md)
   </div>
 
-  <form id="reqForm" class="card">
-    <h2>แบบฟอร์มเบิกของ</h2>
+  <!-- ===== แบบฟอร์มเบิกของ ===== -->
+  <div class="panel active" id="formPanel">
 
-    <label>ชื่อผู้เบิก <span class="required">*</span></label>
-    <input type="text" id="name" required placeholder="ชื่อ-นามสกุล">
+    <form id="reqForm" class="card">
+      <h2>แบบฟอร์มเบิกของ</h2>
 
-    <label>แผนก / ฝ่าย <span class="required">*</span></label>
-    <input type="text" id="department" required placeholder="เช่น คลังสินค้า, บัญชี">
+      <label>ชื่อผู้เบิก <span class="required">*</span></label>
+      <input type="text" id="name" required placeholder="ชื่อ-นามสกุล">
 
-    <label>วันที่ต้องการใช้ <span class="required">*</span></label>
-    <input type="date" id="dateNeeded" required>
+      <label>แผนก / ฝ่าย <span class="required">*</span></label>
+      <input type="text" id="department" required placeholder="เช่น คลังสินค้า, บัญชี">
 
-    <label>รายการที่ต้องการเบิก <span class="required">*</span></label>
-    <div class="items">
-      <div class="item-multi" data-item="กล่อง">
-        <div class="item-name">📦 กล่อง</div>
-        <div class="item-unit">หน่วย: ใบ — เลือกได้หลายขนาด</div>
-        <div class="size-rows" data-rows-for="กล่อง"></div>
-        <button type="button" class="add-size-btn" data-add-for="กล่อง">+ เพิ่มขนาด</button>
-      </div>
-      <div class="item-row" data-item="เทปใส">
-        <div class="item-left">
-          <input type="checkbox" class="item-check" data-name="เทปใส">
-          <div>
-            <div class="item-name">🎞️ เทปใส</div>
-            <div class="item-unit">หน่วย: ม้วน</div>
-          </div>
+      <label>วันที่ต้องการใช้ <span class="required">*</span></label>
+      <input type="date" id="dateNeeded" required>
+
+      <label>รายการที่ต้องการเบิก <span class="required">*</span></label>
+      <div class="items">
+        <div class="item-multi" data-item="กล่อง">
+          <div class="item-name">📦 กล่อง</div>
+          <div class="item-unit">หน่วย: ใบ — เลือกได้หลายขนาด</div>
+          <div class="size-rows" data-rows-for="กล่อง"></div>
+          <button type="button" class="add-size-btn" data-add-for="กล่อง">+ เพิ่มขนาด</button>
         </div>
-        <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
-      </div>
-      <div class="item-row" data-item="บับเบิ้ล">
-        <div class="item-left">
-          <input type="checkbox" class="item-check" data-name="บับเบิ้ล">
-          <div>
-            <div class="item-name">🫧 บับเบิ้ล</div>
-            <div class="item-unit">หน่วย: ม้วน</div>
+        <div class="item-row" data-item="เทปใส">
+          <div class="item-left">
+            <input type="checkbox" class="item-check" data-name="เทปใส">
+            <div>
+              <div class="item-name">🎞️ เทปใส</div>
+              <div class="item-unit">หน่วย: ม้วน</div>
+            </div>
           </div>
+          <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
         </div>
-        <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+        <div class="item-row" data-item="บับเบิ้ล">
+          <div class="item-left">
+            <input type="checkbox" class="item-check" data-name="บับเบิ้ล">
+            <div>
+              <div class="item-name">🫧 บับเบิ้ล</div>
+              <div class="item-unit">หน่วย: ม้วน</div>
+            </div>
+          </div>
+          <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+        </div>
+        <div class="item-multi" data-item="ถุงพลาสติก">
+          <div class="item-name">🛍️ ถุงพลาสติก</div>
+          <div class="item-unit">หน่วย: ใบ — เลือกได้หลายเบอร์</div>
+          <div class="size-rows" data-rows-for="ถุงพลาสติก"></div>
+          <button type="button" class="add-size-btn" data-add-for="ถุงพลาสติก">+ เพิ่มเบอร์</button>
+        </div>
       </div>
-      <div class="item-multi" data-item="ถุงพลาสติก">
-        <div class="item-name">🛍️ ถุงพลาสติก</div>
-        <div class="item-unit">หน่วย: ใบ — เลือกได้หลายเบอร์</div>
-        <div class="size-rows" data-rows-for="ถุงพลาสติก"></div>
-        <button type="button" class="add-size-btn" data-add-for="ถุงพลาสติก">+ เพิ่มเบอร์</button>
+      <div class="hint">กล่องและถุงพลาสติกเลือกได้หลายขนาด/เบอร์ในคำขอเดียว — กด "+ เพิ่มขนาด" เพื่อเพิ่มรายการ</div>
+
+      <label>หมายเหตุ / เหตุผลในการเบิก</label>
+      <textarea id="note" placeholder="ระบุเหตุผล หรือรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
+
+      <button type="submit" class="submit" id="submitBtn">ส่งคำขอเบิก</button>
+      <div id="msg" class="msg"></div>
+    </form>
+
+    <div class="card">
+      <h2>ประวัติการเบิกล่าสุด <button type="button" class="refresh-btn" id="refreshBtn">รีเฟรช</button></h2>
+      <div id="historyList">
+        <div class="history-empty">กำลังโหลด...</div>
       </div>
     </div>
-    <div class="hint">กล่องและถุงพลาสติกเลือกได้หลายขนาด/เบอร์ในคำขอเดียว — กด "+ เพิ่มขนาด" เพื่อเพิ่มรายการ</div>
+  </div>
 
-    <label>หมายเหตุ / เหตุผลในการเบิก</label>
-    <textarea id="note" placeholder="ระบุเหตุผล หรือรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
+  <!-- ===== แดชบอร์ด ===== -->
+  <div class="panel" id="dashPanel">
+    <div class="card">
+      <h2>สรุปเดือนนี้</h2>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiRequests">–</div>
+          <div class="kpi-label">คำขอเดือนนี้</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiQty">–</div>
+          <div class="kpi-label">จำนวนที่เบิกรวม</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiTop">–</div>
+          <div class="kpi-label">เบิกมากที่สุด</div>
+        </div>
+      </div>
+    </div>
 
-    <button type="submit" class="submit" id="submitBtn">ส่งคำขอเบิก</button>
-    <div id="msg" class="msg"></div>
-  </form>
+    <div class="card">
+      <h2>
+        ปริมาณการใช้รายเดือน
+        <span style="display:flex;gap:6px;align-items:center;">
+          <select id="dashPeriod" class="period-select">
+            <option value="6" selected>6 เดือนล่าสุด</option>
+            <option value="12">12 เดือนล่าสุด</option>
+            <option value="all">ทั้งหมด (ตั้งแต่เริ่มใช้งาน)</option>
+          </select>
+          <button type="button" class="refresh-btn" id="refreshDashBtn">รีเฟรช</button>
+        </span>
+      </h2>
+      <div class="chart-scroll">
+        <div id="dashChartWrap" class="chart-wrap">
+          <canvas id="usageChart"></canvas>
+        </div>
+      </div>
+      <div id="dashLegend" class="legend-row"></div>
+      <div id="dashEmpty" class="dash-empty" style="display:none;"></div>
+    </div>
 
-  <div class="card">
-    <h2>ประวัติการเบิกล่าสุด <button type="button" class="refresh-btn" id="refreshBtn">รีเฟรช</button></h2>
-    <div id="historyList">
-      <div class="history-empty">กำลังโหลด...</div>
+    <div class="card">
+      <h2>ตารางสรุปรายเดือน (ย้อนหลัง)</h2>
+      <div id="tableWrap" class="table-wrap">
+        <table class="monthly-table" id="monthlyTable">
+          <thead>
+            <tr>
+              <th>เดือน</th>
+              <th>กล่อง</th>
+              <th>เทปใส</th>
+              <th>บับเบิ้ล</th>
+              <th>ถุงพลาสติก</th>
+              <th>รวม</th>
+              <th>คำขอ</th>
+            </tr>
+          </thead>
+          <tbody id="monthlyTableBody">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);">กำลังโหลด...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -371,15 +581,39 @@
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWTTXTybmq0ArPGa-RjNJio2evN_N1lKqa4XW_9jC3DzvdyuN8J6LRzysvo9cOmF6-/exec";
   // ตัวอย่าง: https://script.google.com/macros/s/AKfycb.../exec
 
+  const ITEM_COLORS = { 'กล่อง': '#2563eb', 'เทปใส': '#16a34a', 'บับเบิ้ล': '#7c3aed', 'ถุงพลาสติก': '#ea580c' };
+
   const form = document.getElementById('reqForm');
   const submitBtn = document.getElementById('submitBtn');
   const msg = document.getElementById('msg');
   const setupNote = document.getElementById('setupNote');
   const historyList = document.getElementById('historyList');
+  const isConfigured = SCRIPT_URL.indexOf('PASTE_YOUR') !== 0;
 
-  if (!SCRIPT_URL || SCRIPT_URL.indexOf('PASTE_YOUR') === 0) {
+  if (!isConfigured) {
     setupNote.classList.add('show');
   }
+
+  // ---- Tabs ----
+  const tabFormBtn = document.getElementById('tabFormBtn');
+  const tabDashBtn = document.getElementById('tabDashBtn');
+  const formPanel = document.getElementById('formPanel');
+  const dashPanel = document.getElementById('dashPanel');
+  let dashLoaded = false;
+
+  function showTab(tab) {
+    const isForm = tab === 'form';
+    tabFormBtn.classList.toggle('active', isForm);
+    tabDashBtn.classList.toggle('active', !isForm);
+    formPanel.classList.toggle('active', isForm);
+    dashPanel.classList.toggle('active', !isForm);
+    if (!isForm && !dashLoaded) {
+      dashLoaded = true;
+      loadDashboard();
+    }
+  }
+  tabFormBtn.addEventListener('click', () => showTab('form'));
+  tabDashBtn.addEventListener('click', () => showTab('dash'));
 
   // ---- รายการที่เลือกได้หลายขนาด/เบอร์ในคำขอเดียว (มัลติช้อยส์) ----
   const SIZE_OPTIONS = {
@@ -469,6 +703,9 @@
   function showMsg(text, type) {
     msg.textContent = text;
     msg.className = 'msg show ' + type;
+    if (type === 'success') {
+      setTimeout(() => { msg.className = 'msg'; }, 6000);
+    }
   }
 
   form.addEventListener('submit', async (e) => {
@@ -543,6 +780,7 @@
       resetSizeRows();
       document.getElementById('dateNeeded').valueAsDate = new Date();
       loadHistory();
+      dashLoaded = false; // ครั้งต่อไปที่เปิดแดชบอร์ดจะโหลดข้อมูลใหม่
     } catch (err) {
       showMsg('❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่', 'error');
     } finally {
@@ -581,10 +819,176 @@
     }[c]));
   }
 
+  // ---- Dashboard ----
+  let usageChart = null;
+
+  function monthLabel(ym) {
+    // ym = "yyyy-MM" -> "ม.ค. 69" style short Thai month/year (BE, 2 digit)
+    const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const [y, m] = ym.split('-').map(Number);
+    const beYear = (y + 543) % 100;
+    return THAI_MONTHS[m - 1] + ' ' + beYear;
+  }
+
+  function setDashLoadingState() {
+    const wrap = document.getElementById('dashChartWrap');
+    const emptyEl = document.getElementById('dashEmpty');
+    const legendEl = document.getElementById('dashLegend');
+    wrap.style.display = 'none';
+    legendEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    document.getElementById('monthlyTableBody').innerHTML =
+      '<tr><td colspan="7" style="text-align:center;color:var(--muted);">กำลังโหลด...</td></tr>';
+  }
+
+  async function loadDashboard() {
+    const wrap = document.getElementById('dashChartWrap');
+    const emptyEl = document.getElementById('dashEmpty');
+    const legendEl = document.getElementById('dashLegend');
+    const period = document.getElementById('dashPeriod').value;
+
+    if (!isConfigured) {
+      wrap.style.display = 'none';
+      legendEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'ตั้งค่า SCRIPT_URL ก่อนจึงจะแสดงแดชบอร์ดได้';
+      setKpi('–', '–', '–');
+      document.getElementById('monthlyTableBody').innerHTML =
+        '<tr><td colspan="7" style="text-align:center;color:var(--muted);">ตั้งค่า SCRIPT_URL ก่อนจึงจะแสดงตารางได้</td></tr>';
+      return;
+    }
+
+    if (typeof Chart === 'undefined') {
+      wrap.style.display = 'none';
+      legendEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'ไม่สามารถโหลดไลบรารีกราฟได้ (เช็คการเชื่อมต่ออินเทอร์เน็ต แล้วลองรีเฟรชอีกครั้ง)';
+      setKpi('–', '–', '–');
+      return;
+    }
+
+    setDashLoadingState();
+
+    try {
+      const res = await fetch(SCRIPT_URL + '?action=summary&months=' + encodeURIComponent(period));
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'unknown error');
+      renderDashboard(data.summary);
+    } catch (err) {
+      wrap.style.display = 'none';
+      legendEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'ไม่สามารถโหลดข้อมูลแดชบอร์ดได้ในขณะนี้';
+      setKpi('–', '–', '–');
+      document.getElementById('monthlyTableBody').innerHTML =
+        '<tr><td colspan="7" style="text-align:center;color:var(--muted);">ไม่สามารถโหลดข้อมูลได้</td></tr>';
+    }
+  }
+
+  function setKpi(requests, qty, top) {
+    document.getElementById('kpiRequests').textContent = requests;
+    document.getElementById('kpiQty').textContent = qty;
+    document.getElementById('kpiTop').textContent = top;
+  }
+
+  function renderDashboard(summary) {
+    const wrap = document.getElementById('dashChartWrap');
+    const emptyEl = document.getElementById('dashEmpty');
+    const legendEl = document.getElementById('dashLegend');
+
+    const months = summary.months || [];
+    const itemNames = summary.itemNames || [];
+    const series = summary.series || {};
+    const requestsByMonth = summary.requestsByMonth || months.map(() => 0);
+
+    const hasData = itemNames.some(name => (series[name] || []).some(v => v > 0));
+
+    // KPIs (เดือนปัจจุบัน = เดือนสุดท้ายในช่วงที่แสดง ถ้ามี)
+    const thisIdx = months.length - 1;
+    let thisMonthQty = 0, topItem = '–', topQty = -1;
+    itemNames.forEach(name => {
+      const v = (series[name] || [])[thisIdx] || 0;
+      thisMonthQty += v;
+      if (v > topQty) { topQty = v; topItem = name; }
+    });
+    if (topQty <= 0) topItem = '–';
+    setKpi(summary.thisMonthRequests ?? 0, thisMonthQty, topItem);
+
+    // ---- ตารางสรุปรายเดือน (ใหม่สุดอยู่บน) ----
+    const tableCols = ['กล่อง', 'เทปใส', 'บับเบิ้ล', 'ถุงพลาสติก'];
+    const tbody = document.getElementById('monthlyTableBody');
+    if (months.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">ยังไม่มีข้อมูล</td></tr>';
+    } else {
+      const rowsHtml = months.map((m, i) => {
+        const vals = tableCols.map(c => (series[c] || [])[i] || 0);
+        const total = vals.reduce((a, b) => a + b, 0);
+        return `<tr>
+          <td>${escapeHtml(monthLabel(m))}</td>
+          ${vals.map(v => `<td>${v.toLocaleString('th-TH')}</td>`).join('')}
+          <td><strong>${total.toLocaleString('th-TH')}</strong></td>
+          <td>${(requestsByMonth[i] || 0).toLocaleString('th-TH')}</td>
+        </tr>`;
+      }).reverse().join('');
+      tbody.innerHTML = rowsHtml;
+    }
+
+    // ---- กราฟ ----
+    if (!hasData) {
+      wrap.style.display = 'none';
+      legendEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'ยังไม่มีข้อมูลการเบิกในช่วงที่เลือก';
+      return;
+    }
+
+    wrap.style.display = 'block';
+    emptyEl.style.display = 'none';
+
+    // ปรับความกว้างกราฟตามจำนวนเดือน เพื่อให้เลื่อนดูย้อนหลังได้เมื่อเลือกช่วงยาว
+    const minWidth = Math.max(months.length * 56, 280);
+    wrap.style.minWidth = minWidth + 'px';
+    wrap.style.width = minWidth + 'px';
+
+    const labels = months.map(monthLabel);
+    const datasets = itemNames
+      .filter(name => (series[name] || []).some(v => v > 0) || ITEM_COLORS[name])
+      .map(name => ({
+        label: name,
+        data: series[name] || months.map(() => 0),
+        backgroundColor: ITEM_COLORS[name] || '#94a3b8',
+        borderRadius: 4,
+        maxBarThickness: 22
+      }));
+
+    legendEl.innerHTML = datasets.map(ds => `
+      <span><span class="legend-dot" style="background:${ds.backgroundColor}"></span>${escapeHtml(ds.label)}</span>
+    `).join('');
+
+    const ctx = document.getElementById('usageChart').getContext('2d');
+    if (usageChart) usageChart.destroy();
+    usageChart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
+  }
+
   // default date = today
   document.getElementById('dateNeeded').valueAsDate = new Date();
 
   document.getElementById('refreshBtn').addEventListener('click', loadHistory);
+  document.getElementById('refreshDashBtn').addEventListener('click', loadDashboard);
+  document.getElementById('dashPeriod').addEventListener('change', loadDashboard);
+
   loadHistory();
 </script>
 
