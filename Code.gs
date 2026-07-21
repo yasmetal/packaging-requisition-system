@@ -114,8 +114,8 @@ function getMonthlySummary_(monthsParam) {
     // หาเดือนที่เก่าที่สุดจากข้อมูลจริง แล้วไล่มาจนถึงเดือนปัจจุบัน
     let earliest = now;
     values.forEach(row => {
-      const ts = row[0];
-      if (ts instanceof Date && ts < earliest) earliest = ts;
+      const ts = toDate_(row[0]);
+      if (ts && ts < earliest) earliest = ts;
     });
     const start = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
     const end = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -145,8 +145,8 @@ function getMonthlySummary_(monthsParam) {
   let thisMonthRequests = 0;
 
   values.forEach(row => {
-    const ts = row[0];
-    if (!(ts instanceof Date)) return;
+    const ts = toDate_(row[0]);
+    if (!ts) return;
     const monthKey = Utilities.formatDate(ts, tz, 'yyyy-MM');
     const idx = monthKeys.indexOf(monthKey);
     let items = [];
@@ -174,6 +174,18 @@ function getMonthlySummary_(monthsParam) {
     thisMonthRequests: thisMonthRequests,
     requestsByMonth: requestsByMonth
   };
+}
+
+/**
+ * แปลงค่าจากเซลล์ชีตให้เป็น Date object เสมอ ไม่ว่าเซลล์นั้นจะถูกอ่านมาเป็น
+ * Date object จริง (ปกติ) หรือเป็น string/serial number (เช่น กรณีคอลัมน์ถูกจัดรูปแบบ
+ * เป็น Plain text ทำให้ getValues() คืนค่าไม่ใช่ Date) — คืนค่า null ถ้าแปลงไม่ได้
+ */
+function toDate_(raw) {
+  if (raw instanceof Date && !isNaN(raw.getTime())) return raw;
+  if (raw === null || raw === undefined || raw === '') return null;
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 function jsonResponse_(obj) {
