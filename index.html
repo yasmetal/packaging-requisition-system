@@ -428,6 +428,45 @@ z-index:1;
 }
 table.monthly-table tbody tr:last-child td{border-bottom:none;}
 table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
+
+/* Detail tab (breakdown by size/variant) */
+.detail-row{
+display:flex;
+align-items:center;
+gap:10px;
+padding:10px 0;
+border-bottom:1px solid var(--border);
+}
+.detail-row:last-child{border-bottom:none;}
+.detail-rank{
+flex:0 0 22px;
+font-size:.78rem;
+font-weight:700;
+color:var(--muted);
+text-align:center;
+}
+.detail-main{flex:1 1 auto;min-width:0;}
+.detail-top{
+display:flex;
+justify-content:space-between;
+align-items:baseline;
+gap:8px;
+font-size:.88rem;
+}
+.detail-name{font-weight:600;display:flex;align-items:center;gap:6px;min-width:0;}
+.detail-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+.detail-qty{font-weight:700;color:var(--primary);white-space:nowrap;}
+.detail-bar-track{
+height:7px;
+background:#eef0f3;
+border-radius:5px;
+margin-top:5px;
+overflow:hidden;
+}
+.detail-bar{
+height:100%;
+border-radius:5px;
+}
 </style>
 </head>
 <body>
@@ -447,6 +486,7 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
   <div class="tabbar">
     <button type="button" class="tab-btn active" id="tabFormBtn">📝 เบิกของ</button>
     <button type="button" class="tab-btn" id="tabDashBtn">📊 แดชบอร์ด</button>
+    <button type="button" class="tab-btn" id="tabDetailBtn">📋 รายละเอียด</button>
   </div>
 
   <div id="setupNote" class="setup-note">
@@ -481,7 +521,7 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
             <input type="checkbox" class="item-check" data-name="เทปใส">
             <div>
               <div class="item-name">🎞️ เทปใส</div>
-              <div class="item-unit">หน่วย: ม้วน</div>
+              <div class="item-unit">หน่วย: ตั้ง</div>
             </div>
           </div>
           <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
@@ -584,6 +624,26 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
     </div>
   </div>
 
+  <!-- ===== รายละเอียดการเบิก (แยกตามขนาด/ชนิด) ===== -->
+  <div class="panel" id="detailPanel">
+    <div class="card">
+      <h2>
+        รายละเอียดการเบิกแยกตามขนาด/ชนิด
+        <span style="display:flex;gap:6px;align-items:center;">
+          <select id="detailPeriod" class="period-select">
+            <option value="6">6 เดือนล่าสุด</option>
+            <option value="12">12 เดือนล่าสุด</option>
+            <option value="all" selected>ทั้งหมด (ตั้งแต่เริ่มใช้งาน)</option>
+          </select>
+          <button type="button" class="refresh-btn" id="refreshDetailBtn">รีเฟรช</button>
+        </span>
+      </h2>
+      <div class="hint">รวมยอดเบิกของแต่ละไซซ์กล่อง / เบอร์ถุงพลาสติก / เทปใส / บับเบิ้ล เป็นรายการเดียวต่อชนิด เรียงจากเบิกเยอะสุดไปน้อยสุด เพื่อให้เห็นภาพรวมชัดเจนว่าอะไรถูกเบิกไปเยอะที่สุด</div>
+      <div id="detailList" style="margin-top:14px;"></div>
+      <div id="detailEmpty" class="dash-empty" style="display:none;"></div>
+    </div>
+  </div>
+
 </div>
 
 <footer>ระบบเบิกวัสดุบรรจุภัณฑ์ · ข้อมูลถูกบันทึกใน Google Sheet ขององค์กร</footer>
@@ -594,6 +654,7 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
   // ตัวอย่าง: https://script.google.com/macros/s/AKfycb.../exec
 
   const ITEM_COLORS = { 'กล่อง': '#2563eb', 'เทปใส': '#16a34a', 'บับเบิ้ล': '#7c3aed', 'ถุงพลาสติก': '#ea580c' };
+  const ITEM_UNITS = { 'กล่อง': 'ใบ', 'เทปใส': 'ตั้ง', 'บับเบิ้ล': 'ม้วน', 'ถุงพลาสติก': 'ใบ' };
 
   // ดึงข้อมูลแบบมี timeout + retry อัตโนมัติ — กัน Apps Script cold-start ช้า/ค้างแล้วหน้าเว็บดูเหมือนไม่ตอบสนอง
   async function fetchJson(url, { timeoutMs = 15000, retries = 2 } = {}) {
@@ -632,23 +693,32 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
   // ---- Tabs ----
   const tabFormBtn = document.getElementById('tabFormBtn');
   const tabDashBtn = document.getElementById('tabDashBtn');
+  const tabDetailBtn = document.getElementById('tabDetailBtn');
   const formPanel = document.getElementById('formPanel');
   const dashPanel = document.getElementById('dashPanel');
+  const detailPanel = document.getElementById('detailPanel');
   let dashLoaded = false;
+  let detailLoaded = false;
 
   function showTab(tab) {
-    const isForm = tab === 'form';
-    tabFormBtn.classList.toggle('active', isForm);
-    tabDashBtn.classList.toggle('active', !isForm);
-    formPanel.classList.toggle('active', isForm);
-    dashPanel.classList.toggle('active', !isForm);
-    if (!isForm && !dashLoaded) {
+    tabFormBtn.classList.toggle('active', tab === 'form');
+    tabDashBtn.classList.toggle('active', tab === 'dash');
+    tabDetailBtn.classList.toggle('active', tab === 'detail');
+    formPanel.classList.toggle('active', tab === 'form');
+    dashPanel.classList.toggle('active', tab === 'dash');
+    detailPanel.classList.toggle('active', tab === 'detail');
+    if (tab === 'dash' && !dashLoaded) {
       dashLoaded = true;
       loadDashboard();
+    }
+    if (tab === 'detail' && !detailLoaded) {
+      detailLoaded = true;
+      loadDetail();
     }
   }
   tabFormBtn.addEventListener('click', () => showTab('form'));
   tabDashBtn.addEventListener('click', () => showTab('dash'));
+  tabDetailBtn.addEventListener('click', () => showTab('detail'));
 
   // ---- รายการที่เลือกได้หลายขนาด/เบอร์ในคำขอเดียว (มัลติช้อยส์) ----
   const SIZE_OPTIONS = {
@@ -820,6 +890,7 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
       document.getElementById('dateNeeded').valueAsDate = new Date();
       loadHistory();
       dashLoaded = false; // ครั้งต่อไปที่เปิดแดชบอร์ดจะโหลดข้อมูลใหม่
+      detailLoaded = false; // ครั้งต่อไปที่เปิดรายละเอียดจะโหลดข้อมูลใหม่
     } catch (err) {
       clearTimeout(submitTimer);
       const timedOut = err && err.name === 'AbortError';
@@ -1035,12 +1106,80 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
     });
   }
 
+  // ---- รายละเอียด (แยกตามขนาด/ชนิดจริง เช่น กล่องขนาด A, ถุงพลาสติกเบอร์3) ----
+  async function loadDetail() {
+    const listEl = document.getElementById('detailList');
+    const emptyEl = document.getElementById('detailEmpty');
+    const period = document.getElementById('detailPeriod').value;
+    const refreshBtn = document.getElementById('refreshDetailBtn');
+    const periodSelect = document.getElementById('detailPeriod');
+
+    if (!isConfigured) {
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'ตั้งค่า SCRIPT_URL ก่อนจึงจะแสดงรายละเอียดได้';
+      return;
+    }
+
+    refreshBtn.disabled = true;
+    periodSelect.disabled = true;
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    emptyEl.innerHTML = '<span class="spinner"></span>กำลังโหลดข้อมูล... (อาจใช้เวลาสักครู่)';
+
+    try {
+      const data = await fetchJson(SCRIPT_URL + '?action=detail&months=' + encodeURIComponent(period));
+      if (!data.ok) throw new Error(data.error || 'unknown error');
+      renderDetail(data.detail);
+    } catch (err) {
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.innerHTML = 'ไม่สามารถโหลดข้อมูลได้ในขณะนี้ (เครือข่ายช้า หรือเซิร์ฟเวอร์ไม่ตอบสนอง)<br><button type="button" class="refresh-btn" style="margin-top:8px;" onclick="loadDetail()">ลองใหม่</button>';
+    } finally {
+      refreshBtn.disabled = false;
+      periodSelect.disabled = false;
+    }
+  }
+
+  function renderDetail(detail) {
+    const listEl = document.getElementById('detailList');
+    const emptyEl = document.getElementById('detailEmpty');
+    const items = (detail && detail.items) || [];
+
+    if (items.length === 0) {
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'ยังไม่มีข้อมูลการเบิกในช่วงที่เลือก';
+      return;
+    }
+    emptyEl.style.display = 'none';
+
+    const max = items[0].qty || 1;
+    listEl.innerHTML = items.map((it, i) => {
+      const color = ITEM_COLORS[it.category] || '#94a3b8';
+      const unit = ITEM_UNITS[it.category] || '';
+      return `
+      <div class="detail-row">
+        <div class="detail-rank">${i + 1}</div>
+        <div class="detail-main">
+          <div class="detail-top">
+            <span class="detail-name"><span class="detail-dot" style="background:${color}"></span>${escapeHtml(it.label)}</span>
+            <span class="detail-qty">${it.qty.toLocaleString('th-TH')} ${escapeHtml(unit)}</span>
+          </div>
+          <div class="detail-bar-track"><div class="detail-bar" style="width:${Math.max(4, (it.qty / max) * 100)}%;background:${color}"></div></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
   // default date = today
   document.getElementById('dateNeeded').valueAsDate = new Date();
 
   document.getElementById('refreshBtn').addEventListener('click', loadHistory);
   document.getElementById('refreshDashBtn').addEventListener('click', loadDashboard);
   document.getElementById('dashPeriod').addEventListener('change', loadDashboard);
+  document.getElementById('refreshDetailBtn').addEventListener('click', loadDetail);
+  document.getElementById('detailPeriod').addEventListener('change', loadDetail);
 
   loadHistory();
 </script>

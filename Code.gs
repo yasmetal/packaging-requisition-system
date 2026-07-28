@@ -88,6 +88,11 @@ function doGet(e) {
       const monthsParam = e.parameter.months === 'all' ? 'all' : (parseInt(e.parameter.months, 10) || 6);
       return jsonResponse_({ ok: true, summary: getMonthlySummary_(monthsParam) });
     }
+    if (action === 'detail') {
+      // months: จำนวนเดือนย้อนหลัง (ตัวเลข) หรือ "all" เพื่อดูตั้งแต่รายการแรกสุด
+      const monthsParam = e.parameter.months === 'all' ? 'all' : (parseInt(e.parameter.months, 10) || 6);
+      return jsonResponse_({ ok: true, detail: getDetailBreakdown_(monthsParam) });
+    }
     return jsonResponse_({ ok: true, message: 'ระบบเบิกวัสดุบรรจุภัณฑ์ API ทำงานปกติ' });
   } catch (err) {
     return jsonResponse_({ ok: false, error: err.message });
@@ -174,6 +179,58 @@ function getMonthlySummary_(monthsParam) {
     thisMonthRequests: thisMonthRequests,
     requestsByMonth: requestsByMonth
   };
+}
+
+/**
+ * รวมยอดเบิกแยกตามรายการย่อยจริง (กล่องแยกตามไซซ์ / ถุงพลาสติกแยกตามเบอร์ /
+ * เทปใส / บับเบิ้ล นับรวมเป็นรายการเดียวเพราะไม่มีขนาดย่อย)
+ * monthsParam: จำนวนเดือนย้อนหลัง (รวมเดือนปัจจุบัน) หรือ 'all' เพื่อรวมยอดตั้งแต่รายการแรกสุด
+ * คืนค่า { items: [{key, category, size, label, qty}, ...] } เรียงจากเบิกเยอะสุดไปน้อยสุด
+ */
+function getDetailBreakdown_(monthsParam) {
+  const sheet = getSheet_();
+  const values = sheet.getDataRange().getValues();
+  values.shift(); // remove header
+
+  const now = new Date();
+  let cutoff = null; // null = ไม่กรองช่วงเวลา (all)
+  if (monthsParam !== 'all') {
+    cutoff = new Date(now.getFullYear(), now.getMonth() - (monthsParam - 1), 1);
+  }
+
+  const totals = {}; // key -> { category, size, qty }
+  values.forEach(row => {
+    const ts = toDate_(row[0]);
+    if (!ts) return;
+    if (cutoff && ts < cutoff) return;
+    let items = [];
+    try { items = JSON.parse(row[4]); } catch (e) { items = []; }
+
+    items.forEach(it => {
+      const category = it.name;
+      const size = it.size || '';
+      const key = category + '||' + size;
+      const qty = Number(it.qty) || 0;
+      if (!totals[key]) totals[key] = { category: category, size: size, qty: 0 };
+      totals[key].qty += qty;
+    });
+  });
+
+  const list = Object.keys(totals)
+    .map(key => {
+      const t = totals[key];
+      return {
+        key: key,
+        category: t.category,
+        size: t.size,
+        label: t.size ? itemLabel_({ name: t.category, size: t.size }) : t.category,
+        qty: t.qty
+      };
+    })
+    .filter(it => it.qty > 0)
+    .sort((a, b) => b.qty - a.qty);
+
+  return { items: list };
 }
 
 /**
