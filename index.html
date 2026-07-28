@@ -330,6 +330,18 @@ color:var(--primary);
 cursor:pointer;
 font-family:inherit;
 }
+.refresh-btn:disabled{opacity:.5;cursor:not-allowed;}
+.spinner{
+display:inline-block;
+width:16px;height:16px;
+border:2px solid var(--border);
+border-top-color:var(--primary);
+border-radius:50%;
+animation:spin .7s linear infinite;
+vertical-align:middle;
+margin-right:6px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
 
 /* Dashboard */
 .period-select{
@@ -583,6 +595,29 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
 
   const ITEM_COLORS = { 'กล่อง': '#2563eb', 'เทปใส': '#16a34a', 'บับเบิ้ล': '#7c3aed', 'ถุงพลาสติก': '#ea580c' };
 
+  // ดึงข้อมูลแบบมี timeout + retry อัตโนมัติ — กัน Apps Script cold-start ช้า/ค้างแล้วหน้าเว็บดูเหมือนไม่ตอบสนอง
+  async function fetchJson(url, { timeoutMs = 15000, retries = 2 } = {}) {
+    let lastErr;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        return data;
+      } catch (err) {
+        clearTimeout(timer);
+        lastErr = err;
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+        }
+      }
+    }
+    throw lastErr;
+  }
+
   const form = document.getElementById('reqForm');
   const submitBtn = document.getElementById('submitBtn');
   const msg = document.getElementById('msg');
@@ -766,13 +801,17 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
     submitBtn.disabled = true;
     submitBtn.textContent = 'กำลังส่ง...';
 
+    const submitController = new AbortController();
+    const submitTimer = setTimeout(() => submitController.abort(), 20000);
     try {
       // text/plain avoids CORS preflight against Apps Script web apps
       await fetch(SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: submitController.signal
       });
+      clearTimeout(submitTimer);
       showMsg('✅ ส่งคำขอเบิกเรียบร้อยแล้ว', 'success');
       form.reset();
       document.querySelectorAll('.item-row .qty-input').forEach(q => { q.disabled = true; q.value=''; });
@@ -782,7 +821,11 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
       loadHistory();
       dashLoaded = false; // ครั้งต่อไปที่เปิดแดชบอร์ดจะโหลดข้อมูลใหม่
     } catch (err) {
-      showMsg('❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่', 'error');
+      clearTimeout(submitTimer);
+      const timedOut = err && err.name === 'AbortError';
+      showMsg(timedOut
+        ? '❌ ส่งข้อมูลไม่สำเร็จ (หมดเวลารอเซิร์ฟเวอร์) กรุณาลองใหม่อีกครั้ง'
+        : '❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่', 'error');
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = 'ส่งคำขอเบิก';
@@ -794,9 +837,10 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
       historyList.innerHTML = '<div class="history-empty">ตั้งค่า SCRIPT_URL ก่อนจึงจะแสดงประวัติได้</div>';
       return;
     }
+    historyList.innerHTML = '<div class="history-empty"><span class="spinner"></span>กำลังโหลด...</div>';
     try {
-      const res = await fetch(SCRIPT_URL + '?action=list&limit=10');
-      const data = await res.json();
+      const data = await fetchJson(SCRIPT_URL + '?action=list&limit=10');
+      if (!data.ok) throw new Error(data.error || 'unknown error');
       const rows = data.rows || [];
       if (rows.length === 0) {
         historyList.innerHTML = '<div class="history-empty">ยังไม่มีรายการเบิก</div>';
@@ -809,7 +853,7 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
         </div>
       `).join('');
     } catch (err) {
-      historyList.innerHTML = '<div class="history-empty">ไม่สามารถโหลดประวัติได้ในขณะนี้</div>';
+      historyList.innerHTML = '<div class="history-empty">ไม่สามารถโหลดประวัติได้ในขณะนี้ — <button type="button" class="refresh-btn" onclick="loadHistory()">ลองใหม่</button></div>';
     }
   }
 
@@ -837,8 +881,10 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
     wrap.style.display = 'none';
     legendEl.innerHTML = '';
     emptyEl.style.display = 'block';
+    emptyEl.innerHTML = '<span class="spinner"></span>กำลังโหลดข้อมูล... (อาจใช้เวลาสักครู่)';
     document.getElementById('monthlyTableBody').innerHTML =
-      '<tr><td colspan="7" style="text-align:center;color:var(--muted);">กำลังโหลด...</td></tr>';
+      '<tr><td colspan="7" style="text-align:center;color:var(--muted);"><span class="spinner"></span>กำลังโหลด...</td></tr>';
+    setKpi('…', '…', '…');
   }
 
   async function loadDashboard() {
@@ -869,19 +915,26 @@ table.monthly-table tbody tr:nth-child(odd){background:#fafafa;}
 
     setDashLoadingState();
 
+    const refreshDashBtn = document.getElementById('refreshDashBtn');
+    const periodSelect = document.getElementById('dashPeriod');
+    refreshDashBtn.disabled = true;
+    periodSelect.disabled = true;
+
     try {
-      const res = await fetch(SCRIPT_URL + '?action=summary&months=' + encodeURIComponent(period));
-      const data = await res.json();
+      const data = await fetchJson(SCRIPT_URL + '?action=summary&months=' + encodeURIComponent(period));
       if (!data.ok) throw new Error(data.error || 'unknown error');
       renderDashboard(data.summary);
     } catch (err) {
       wrap.style.display = 'none';
       legendEl.innerHTML = '';
       emptyEl.style.display = 'block';
-      emptyEl.textContent = 'ไม่สามารถโหลดข้อมูลแดชบอร์ดได้ในขณะนี้';
+      emptyEl.innerHTML = 'ไม่สามารถโหลดข้อมูลแดชบอร์ดได้ในขณะนี้ (เครือข่ายช้า หรือเซิร์ฟเวอร์ไม่ตอบสนอง)<br><button type="button" class="refresh-btn" style="margin-top:8px;" onclick="loadDashboard()">ลองใหม่</button>';
       setKpi('–', '–', '–');
       document.getElementById('monthlyTableBody').innerHTML =
         '<tr><td colspan="7" style="text-align:center;color:var(--muted);">ไม่สามารถโหลดข้อมูลได้</td></tr>';
+    } finally {
+      refreshDashBtn.disabled = false;
+      periodSelect.disabled = false;
     }
   }
 
