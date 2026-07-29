@@ -502,7 +502,7 @@ border-radius:5px;
       <label>ชื่อผู้เบิก <span class="required">*</span></label>
       <input type="text" id="name" required placeholder="ชื่อ-นามสกุล">
 
-      <label>แผนก / ฝ่าย <span class="required">*</span></label>
+      <label>แผนก / ญาย <span class="required">*</span></label>
       <input type="text" id="department" required placeholder="เช่น คลังสินค้า, บัญชี">
 
       <label>วันที่ต้องการใช้ <span class="required">*</span></label>
@@ -675,6 +675,17 @@ border-radius:5px;
 
   const ITEM_COLORS = { 'กล่อง': '#2563eb', 'เทปใส': '#16a34a', 'บับเบิ้ล': '#7c3aed', 'ถุงพลาสติก': '#ea580c' };
   const ITEM_UNITS = { 'กล่อง': 'ใบ', 'เทปใส': 'ตั้ง', 'บับเบิ้ล': 'ม้วน', 'ถุงพลาสติก': 'ใบ' };
+
+  // ตั้งค่า <input type=date/month> ด้วยวันที่ "ตามเวลาท้องถิ่น" แทน valueAsDate
+  // (บั๊ก: valueAsDate ตีความ/แสดงผลเป็น UTC — ถ้าผู้ใช้อยู่โซนเวลา +7 และเปิดเว็บช่วงเที่ยงคืน-06:59น.
+  //  UTC จะยังเป็น "เมื่อวาน" ทำให้ช่องวันที่/เดือนเริ่มต้นเพี้ยนไปหนึ่งวัน/เดือนโดยไม่รู้ตัว)
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function toLocalDateValue(d) {
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function toLocalMonthValue(d) {
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1);
+  }
 
   // ดึงข้อมูลแบบมี timeout + retry อัตโนมัติ — กัน Apps Script cold-start ช้า/ค้างแล้วหน้าเว็บดูเหมือนไม่ตอบสนอง
   async function fetchJson(url, { timeoutMs = 15000, retries = 2 } = {}) {
@@ -854,12 +865,18 @@ border-radius:5px;
     });
 
     // รายการแบบไม่มีขนาด (เทปใส / บับเบิ้ล)
+    // บั๊กเดิม: ถ้าติ๊กเลือกแต่กรอกจำนวนไม่ถูกต้อง (ว่าง/0/ไม่ใช่ตัวเลข) โค้ดจะเงียบไม่เพิ่มรายการ
+    // และไม่แจ้งเตือนอะไรเลย ต่างจากกล่อง/ถุงพลาสติกที่แจ้งเตือนกรณีกรอกไม่ครบ — แก้ให้แจ้งเตือนเหมือนกัน
     document.querySelectorAll('.item-row').forEach(row => {
       const check = row.querySelector('.item-check');
       const qty = row.querySelector('.qty-input');
       if (check.checked) {
         const q = parseInt(qty.value, 10);
-        if (q > 0) items.push({ name: check.dataset.name, qty: q });
+        if (q > 0) {
+          items.push({ name: check.dataset.name, qty: q });
+        } else {
+          incompleteNames.push(check.dataset.name);
+        }
       }
     });
 
@@ -907,7 +924,7 @@ border-radius:5px;
       document.querySelectorAll('.item-row .qty-input').forEach(q => { q.disabled = true; q.value=''; });
       document.querySelectorAll('.item-row').forEach(r => r.classList.remove('active'));
       resetSizeRows();
-      document.getElementById('dateNeeded').valueAsDate = new Date();
+      document.getElementById('dateNeeded').value = toLocalDateValue(new Date());
       loadHistory();
       dashLoaded = false; // ครั้งต่อไปที่เปิดแดชบอร์ดจะโหลดข้อมูลใหม่
       detailLoaded = false; // ครั้งต่อไปที่เปิดรายละเอียดจะโหลดข้อมูลใหม่
@@ -1080,15 +1097,24 @@ border-radius:5px;
 
     const hasData = itemNames.some(name => (series[name] || []).some(v => v > 0));
 
-    // KPIs (เดือนปัจจุบัน = เดือนสุดท้ายในช่วงที่แสดง ถ้ามี)
-    const thisIdx = months.length - 1;
+    // KPIs สำหรับ "เดือนนี้" จริง ๆ (ไม่ใช่แค่เดือนสุดท้ายของช่วงที่แสดง)
+    // บั๊กเดิม: เคยอิงตำแหน่งสุดท้ายของ series เสมอ ถ้าเลือกช่วง "กำหนดเอง" ที่ไม่รวมเดือนปัจจุบัน
+    // (เช่นดูย้อนหลังไปเดือนก่อน ๆ) การ์ด "สรุปเดือนนี้" จะโชว์ข้อมูลของเดือนอื่นแทนโดยไม่รู้ตัว
+    // แก้โดยหาตำแหน่งเดือนปัจจุบันจริงจาก thisMonthKey ที่ backend ส่งมา (คำนวณจากเวลาเซิร์ฟเวอร์)
+    // (ถ้ายังไม่ redeploy Code.gs เวอร์ชันใหม่ thisMonthKey จะไม่มีมา — fallback เป็นเดือนสุดท้ายเหมือนเดิม)
+    const thisIdx = summary.thisMonthKey ? months.indexOf(summary.thisMonthKey) : months.length - 1;
     let thisMonthQty = 0, topItem = '–', topQty = -1;
-    itemNames.forEach(name => {
-      const v = (series[name] || [])[thisIdx] || 0;
-      thisMonthQty += v;
-      if (v > topQty) { topQty = v; topItem = name; }
-    });
-    if (topQty <= 0) topItem = '–';
+    if (thisIdx >= 0) {
+      itemNames.forEach(name => {
+        const v = (series[name] || [])[thisIdx] || 0;
+        thisMonthQty += v;
+        if (v > topQty) { topQty = v; topItem = name; }
+      });
+      if (topQty <= 0) topItem = '–';
+    } else {
+      thisMonthQty = 0;
+      topItem = '–';
+    }
     setKpi(summary.thisMonthRequests ?? 0, thisMonthQty, topItem);
 
     // ---- ตารางสรุปรายเดือน (ใหม่สุดอยู่บน) ----
@@ -1243,14 +1269,14 @@ border-radius:5px;
   }
 
   // default date = today
-  document.getElementById('dateNeeded').valueAsDate = new Date();
+  document.getElementById('dateNeeded').value = toLocalDateValue(new Date());
 
   // ---- ตัวเลือก "กำหนดเอง" ในแดชบอร์ด: ตั้งค่าเริ่มต้นเป็นต้นเดือนนี้ - วันนี้ ----
   (function initDashCustomRange() {
     const today = new Date();
     const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    document.getElementById('dashFrom').valueAsDate = firstOfMonth;
-    document.getElementById('dashTo').valueAsDate = today;
+    document.getElementById('dashFrom').value = toLocalDateValue(firstOfMonth);
+    document.getElementById('dashTo').value = toLocalDateValue(today);
   })();
 
   function toggleDashCustomRange() {
