@@ -9,7 +9,7 @@
  *    - Who has access: Anyone (หรือ Anyone within [organization] ถ้าต้องการจำกัดเฉพาะในองค์กร)
  * 4. คัดลอก URL ที่ได้ (ลงท้ายด้วย /exec) ไปวางใน index.html ตัวแปร SCRIPT_URL
  *
- * ข้อมูลจะถูกเก็บเป็นแถวในชีตชื่อ "Requests" ภายใน Google Sheet เดียวกับที่ผูก Script นี้ไว้
+ * ข้อมูลจะถูกเก็บเป็นแถวในชีตชื่อ "Requests" ภายใน Google Sheet เดียวกันที่ผูก Script นี้ไว้
  * (ไฟล์ Sheet จะอยู่ใน Google Drive ของบัญชีที่ deploy Web App นี้)
  */
 
@@ -84,14 +84,29 @@ function doGet(e) {
       return jsonResponse_({ ok: true, rows: rows });
     }
     if (action === 'summary') {
+      // from/to: กำหนดช่วงวันที่เองแบบ yyyy-MM-dd (ถ้าส่งมาทั้งคู่ จะใช้ช่วงนี้แทน months)
+      const from = (e.parameter.from || '').toString().trim();
+      const to = (e.parameter.to || '').toString().trim();
+      if (from && to) {
+        return jsonResponse_({ ok: true, summary: getMonthlySummary_(null, from, to) });
+      }
       // months: จำนวนเดือนย้อนหลัง (ตัวเลข) หรือ "all" เพื่อดูตั้งแต่รายการแรกสุด
       const monthsParam = e.parameter.months === 'all' ? 'all' : (parseInt(e.parameter.months, 10) || 6);
       return jsonResponse_({ ok: true, summary: getMonthlySummary_(monthsParam) });
     }
     if (action === 'detail') {
+      // month: ดูเฉพาะเดือนเดียวแบบ yyyy-MM (ถ้าส่งมา จะใช้แทน months)
+      const month = (e.parameter.month || '').toString().trim();
+      if (month) {
+        return jsonResponse_({ ok: true, detail: getDetailBreakdown_(null, month) });
+      }
       // months: จำนวนเดือนย้อนหลัง (ตัวเลข) หรือ "all" เพื่อดูตั้งแต่รายการแรกสุด
       const monthsParam = e.parameter.months === 'all' ? 'all' : (parseInt(e.parameter.months, 10) || 6);
       return jsonResponse_({ ok: true, detail: getDetailBreakdown_(monthsParam) });
+    }
+    if (action === 'months') {
+      // รายชื่อเดือน (yyyy-MM) ที่มีข้อมูลจริงในชีต เรียงใหม่สุดก่อน ใช้เติม dropdown "ดูรายเดือน"
+      return jsonResponse_({ ok: true, months: getAvailableMonths_() });
     }
     return jsonResponse_({ ok: true, message: 'ระบบเบิกวัสดุบรรจุภัณฑ์ API ทำงานปกติ' });
   } catch (err) {
@@ -102,11 +117,14 @@ function doGet(e) {
 /**
  * รวมยอดจำนวนการเบิกแต่ละรายการ แยกตามเดือน
  * monthsParam: จำนวนเดือนย้อนหลัง (รวมเดือนปัจจุบัน) หรือ 'all' เพื่อไล่ตั้งแต่เดือนของรายการแรกสุดในชีต
+ *              (ไม่ใช้ถ้าส่ง fromParam/toParam มาแทน)
+ * fromParam/toParam: ช่วงวันที่กำหนดเองแบบ yyyy-MM-dd — ถ้าส่งมาทั้งคู่จะกรองเฉพาะรายการที่อยู่ในช่วงวันที่นี้จริง ๆ
+ *              (ไม่ใช่แค่ปัดเป็นทั้งเดือน) แล้วค่อยจัดกลุ่มผลลัพธ์เป็นรายเดือนตามช่วงที่ครอบคลุม
  * หมายเหตุ: ถุงพลาสติกทุกเบอร์จะถูกรวมเป็นรายการ "ถุงพลาสติก" รายการเดียว (ไม่แยกตามเบอร์)
  * คืนค่า { months: ["2026-02", ...], itemNames: [...], series: {itemName: [qty,...]}, totals: {...},
  *          totalRequests, thisMonthRequests, requestsByMonth: [n, ...] }
  */
-function getMonthlySummary_(monthsParam) {
+function getMonthlySummary_(monthsParam, fromParam, toParam) {
   const tz = Session.getScriptTimeZone();
   const sheet = getSheet_();
   const values = sheet.getDataRange().getValues();
@@ -114,8 +132,27 @@ function getMonthlySummary_(monthsParam) {
 
   const now = new Date();
   const monthKeys = [];
+  const isCustomRange = !!(fromParam && toParam);
+  let rangeStart = null;
+  let rangeEnd = null;
 
-  if (monthsParam === 'all') {
+  if (isCustomRange) {
+    rangeStart = new Date(fromParam + 'T00:00:00');
+    rangeEnd = new Date(toParam + 'T23:59:59');
+    if (isNaN(rangeStart.getTime()) || isNaN(rangeEnd.getTime())) {
+      throw new Error('รูปแบบวันที่ไม่ถูกต้อง (ต้องเป็น yyyy-MM-dd)');
+    }
+    const start = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+    const end = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), 1);
+    let cursor = start;
+    while (cursor <= end) {
+      monthKeys.push(Utilities.formatDate(cursor, tz, 'yyyy-MM'));
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    }
+    if (monthKeys.length === 0) {
+      monthKeys.push(Utilities.formatDate(rangeStart, tz, 'yyyy-MM'));
+    }
+  } else if (monthsParam === 'all') {
     // หาเดือนที่เก่าที่สุดจากข้อมูลจริง แล้วไล่มาจนถึงเดือนปัจจุบัน
     let earliest = now;
     values.forEach(row => {
@@ -152,6 +189,8 @@ function getMonthlySummary_(monthsParam) {
   values.forEach(row => {
     const ts = toDate_(row[0]);
     if (!ts) return;
+    if (isCustomRange && (ts < rangeStart || ts > rangeEnd)) return;
+
     const monthKey = Utilities.formatDate(ts, tz, 'yyyy-MM');
     const idx = monthKeys.indexOf(monthKey);
     let items = [];
@@ -185,16 +224,19 @@ function getMonthlySummary_(monthsParam) {
  * รวมยอดเบิกแยกตามรายการย่อยจริง (กล่องแยกตามไซซ์ / ถุงพลาสติกแยกตามเบอร์ /
  * เทปใส / บับเบิ้ล นับรวมเป็นรายการเดียวเพราะไม่มีขนาดย่อย)
  * monthsParam: จำนวนเดือนย้อนหลัง (รวมเดือนปัจจุบัน) หรือ 'all' เพื่อรวมยอดตั้งแต่รายการแรกสุด
- * คืนค่า { items: [{key, category, size, label, qty}, ...] } เรียงจากเบิกเยอะสุดไปน้อยสุด
+ *              (ไม่ใช้ถ้าส่ง monthParam มาแทน — ส่ง null ได้)
+ * monthParam: ถ้าระบุ (yyyy-MM) จะกรองเฉพาะเดือนนั้นเดือนเดียว โดยไม่สนใจ monthsParam
+ * คืนค่า { items: [{key, category, size, label, qty}, ...], month } เรียงจากเบิกเยอะสุดไปน้อยสุด
  */
-function getDetailBreakdown_(monthsParam) {
+function getDetailBreakdown_(monthsParam, monthParam) {
+  const tz = Session.getScriptTimeZone();
   const sheet = getSheet_();
   const values = sheet.getDataRange().getValues();
   values.shift(); // remove header
 
   const now = new Date();
   let cutoff = null; // null = ไม่กรองช่วงเวลา (all)
-  if (monthsParam !== 'all') {
+  if (!monthParam && monthsParam !== 'all') {
     cutoff = new Date(now.getFullYear(), now.getMonth() - (monthsParam - 1), 1);
   }
 
@@ -202,7 +244,12 @@ function getDetailBreakdown_(monthsParam) {
   values.forEach(row => {
     const ts = toDate_(row[0]);
     if (!ts) return;
-    if (cutoff && ts < cutoff) return;
+    if (monthParam) {
+      const monthKey = Utilities.formatDate(ts, tz, 'yyyy-MM');
+      if (monthKey !== monthParam) return;
+    } else if (cutoff && ts < cutoff) {
+      return;
+    }
     let items = [];
     try { items = JSON.parse(row[4]); } catch (e) { items = []; }
 
@@ -230,7 +277,30 @@ function getDetailBreakdown_(monthsParam) {
     .filter(it => it.qty > 0)
     .sort((a, b) => b.qty - a.qty);
 
-  return { items: list };
+  return { items: list, month: monthParam || null };
+}
+
+/**
+ * คืนรายชื่อเดือน (yyyy-MM) ที่มีข้อมูลจริงในชีต เรียงใหม่สุดไปเก่าสุด
+ * รวมเดือนปัจจุบันเสมอแม้ยังไม่มีข้อมูล เพื่อให้เลือกดูเดือนนี้ได้จาก dropdown
+ */
+function getAvailableMonths_() {
+  const tz = Session.getScriptTimeZone();
+  const sheet = getSheet_();
+  const values = sheet.getDataRange().getValues();
+  values.shift(); // remove header
+
+  const now = new Date();
+  const monthSet = {};
+  monthSet[Utilities.formatDate(now, tz, 'yyyy-MM')] = true;
+
+  values.forEach(row => {
+    const ts = toDate_(row[0]);
+    if (!ts) return;
+    monthSet[Utilities.formatDate(ts, tz, 'yyyy-MM')] = true;
+  });
+
+  return Object.keys(monthSet).sort().reverse();
 }
 
 /**
