@@ -122,7 +122,7 @@ function doGet(e) {
  *              (ไม่ใช่แค่ปัดเป็นทั้งเดือน) แล้วค่อยจัดกลุ่มผลลัพธ์เป็นรายเดือนตามช่วงที่ครอบคลุม
  * หมายเหตุ: ถุงพลาสติกทุกเบอร์จะถูกรวมเป็นรายการ "ถุงพลาสติก" รายการเดียว (ไม่แยกตามเบอร์)
  * คืนค่า { months: ["2026-02", ...], itemNames: [...], series: {itemName: [qty,...]}, totals: {...},
- *          totalRequests, thisMonthRequests, requestsByMonth: [n, ...] }
+ *          totalRequests, thisMonthRequests, thisMonthKey, requestsByMonth: [n, ...] }
  */
 function getMonthlySummary_(monthsParam, fromParam, toParam) {
   const tz = Session.getScriptTimeZone();
@@ -216,6 +216,7 @@ function getMonthlySummary_(monthsParam, fromParam, toParam) {
     totals: totals,
     totalRequests: totalRequests,
     thisMonthRequests: thisMonthRequests,
+    thisMonthKey: thisMonthKey,
     requestsByMonth: requestsByMonth
   };
 }
