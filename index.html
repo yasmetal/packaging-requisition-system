@@ -583,15 +583,27 @@ border-radius:5px;
     <div class="card">
       <h2>
         ปริมาณการใช้รายเดือน
-        <span style="display:flex;gap:6px;align-items:center;">
+        <span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           <select id="dashPeriod" class="period-select">
             <option value="6" selected>6 เดือนล่าสุด</option>
             <option value="12">12 เดือนล่าสุด</option>
             <option value="all">ทั้งหมด (ตั้งแต่เริ่มใช้งาน)</option>
+            <option value="custom">กำหนดเอง...</option>
           </select>
           <button type="button" class="refresh-btn" id="refreshDashBtn">รีเฟรช</button>
         </span>
       </h2>
+      <div id="dashCustomRange" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;margin:-4px 0 14px;">
+        <label style="font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center;">
+          จาก
+          <input type="date" id="dashFrom" class="period-select" style="padding:6px 8px;">
+        </label>
+        <label style="font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center;">
+          ถึง
+          <input type="date" id="dashTo" class="period-select" style="padding:6px 8px;">
+        </label>
+        <button type="button" class="refresh-btn" id="dashCustomApplyBtn">ดูข้อมูล</button>
+      </div>
       <div class="chart-scroll">
         <div id="dashChartWrap" class="chart-wrap">
           <canvas id="usageChart"></canvas>
@@ -629,15 +641,23 @@ border-radius:5px;
     <div class="card">
       <h2>
         รายละเอียดการเบิกแยกตามขนาด/ชนิด
-        <span style="display:flex;gap:6px;align-items:center;">
+        <span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           <select id="detailPeriod" class="period-select">
             <option value="6">6 เดือนล่าสุด</option>
             <option value="12">12 เดือนล่าสุด</option>
             <option value="all" selected>ทั้งหมด (ตั้งแต่เริ่มใช้งาน)</option>
+            <option value="month">เลือกเดือน...</option>
           </select>
           <button type="button" class="refresh-btn" id="refreshDetailBtn">รีเฟรช</button>
         </span>
       </h2>
+      <div id="detailMonthPicker" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;margin:-4px 0 14px;">
+        <label style="font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center;">
+          เดือน
+          <input type="month" id="detailMonthInput" class="period-select" style="padding:6px 8px;">
+        </label>
+        <button type="button" class="refresh-btn" id="detailMonthApplyBtn">ดูข้อมูล</button>
+      </div>
       <div class="hint">รวมยอดเบิกของแต่ละไซซ์กล่อง / เบอร์ถุงพลาสติก / เทปใส / บับเบิ้ล เป็นรายการเดียวต่อชนิด เรียงจากเบิกเยอะสุดไปน้อยสุด เพื่อให้เห็นภาพรวมชัดเจนว่าอะไรถูกเบิกไปเยอะที่สุด</div>
       <div id="detailList" style="margin-top:14px;"></div>
       <div id="detailEmpty" class="dash-empty" style="display:none;"></div>
@@ -945,6 +965,13 @@ border-radius:5px;
     return THAI_MONTHS[m - 1] + ' ' + beYear;
   }
 
+  function monthLabelFull(ym) {
+    // ym = "yyyy-MM" -> "กรกฎาคม 2569" style full Thai month/year (BE, 4 digit)
+    const THAI_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    const [y, m] = ym.split('-').map(Number);
+    return THAI_MONTHS_FULL[m - 1] + ' ' + (y + 543);
+  }
+
   function setDashLoadingState() {
     const wrap = document.getElementById('dashChartWrap');
     const emptyEl = document.getElementById('dashEmpty');
@@ -963,6 +990,26 @@ border-radius:5px;
     const emptyEl = document.getElementById('dashEmpty');
     const legendEl = document.getElementById('dashLegend');
     const period = document.getElementById('dashPeriod').value;
+    const isCustom = period === 'custom';
+    const fromVal = document.getElementById('dashFrom').value;
+    const toVal = document.getElementById('dashTo').value;
+
+    if (isCustom && (!fromVal || !toVal)) {
+      wrap.style.display = 'none';
+      legendEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'กรุณาเลือกวันที่เริ่มต้นและสิ้นสุดให้ครบ';
+      setKpi('–', '–', '–');
+      return;
+    }
+    if (isCustom && fromVal > toVal) {
+      wrap.style.display = 'none';
+      legendEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'วันที่เริ่มต้นต้องมาก่อนวันที่สิ้นสุด';
+      setKpi('–', '–', '–');
+      return;
+    }
 
     if (!isConfigured) {
       wrap.style.display = 'none';
@@ -988,11 +1035,16 @@ border-radius:5px;
 
     const refreshDashBtn = document.getElementById('refreshDashBtn');
     const periodSelect = document.getElementById('dashPeriod');
+    const customApplyBtn = document.getElementById('dashCustomApplyBtn');
     refreshDashBtn.disabled = true;
     periodSelect.disabled = true;
+    customApplyBtn.disabled = true;
 
     try {
-      const data = await fetchJson(SCRIPT_URL + '?action=summary&months=' + encodeURIComponent(period));
+      const url = isCustom
+        ? SCRIPT_URL + '?action=summary&from=' + encodeURIComponent(fromVal) + '&to=' + encodeURIComponent(toVal)
+        : SCRIPT_URL + '?action=summary&months=' + encodeURIComponent(period);
+      const data = await fetchJson(url);
       if (!data.ok) throw new Error(data.error || 'unknown error');
       renderDashboard(data.summary);
     } catch (err) {
@@ -1006,6 +1058,7 @@ border-radius:5px;
     } finally {
       refreshDashBtn.disabled = false;
       periodSelect.disabled = false;
+      customApplyBtn.disabled = false;
     }
   }
 
@@ -1113,6 +1166,16 @@ border-radius:5px;
     const period = document.getElementById('detailPeriod').value;
     const refreshBtn = document.getElementById('refreshDetailBtn');
     const periodSelect = document.getElementById('detailPeriod');
+    const monthApplyBtn = document.getElementById('detailMonthApplyBtn');
+    const isMonthMode = period === 'month';
+    const monthVal = document.getElementById('detailMonthInput').value;
+
+    if (isMonthMode && !monthVal) {
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'กรุณาเลือกเดือนที่ต้องการดู';
+      return;
+    }
 
     if (!isConfigured) {
       listEl.innerHTML = '';
@@ -1123,12 +1186,16 @@ border-radius:5px;
 
     refreshBtn.disabled = true;
     periodSelect.disabled = true;
+    monthApplyBtn.disabled = true;
     listEl.innerHTML = '';
     emptyEl.style.display = 'block';
     emptyEl.innerHTML = '<span class="spinner"></span>กำลังโหลดข้อมูล... (อาจใช้เวลาสักครู่)';
 
     try {
-      const data = await fetchJson(SCRIPT_URL + '?action=detail&months=' + encodeURIComponent(period));
+      const url = isMonthMode
+        ? SCRIPT_URL + '?action=detail&month=' + encodeURIComponent(monthVal)
+        : SCRIPT_URL + '?action=detail&months=' + encodeURIComponent(period);
+      const data = await fetchJson(url);
       if (!data.ok) throw new Error(data.error || 'unknown error');
       renderDetail(data.detail);
     } catch (err) {
@@ -1138,6 +1205,7 @@ border-radius:5px;
     } finally {
       refreshBtn.disabled = false;
       periodSelect.disabled = false;
+      monthApplyBtn.disabled = false;
     }
   }
 
@@ -1149,7 +1217,9 @@ border-radius:5px;
     if (items.length === 0) {
       listEl.innerHTML = '';
       emptyEl.style.display = 'block';
-      emptyEl.textContent = 'ยังไม่มีข้อมูลการเบิกในช่วงที่เลือก';
+      emptyEl.textContent = detail && detail.month
+        ? `ยังไม่มีข้อมูลการเบิกในเดือน${monthLabelFull(detail.month)}`
+        : 'ยังไม่มีข้อมูลการเบิกในช่วงที่เลือก';
       return;
     }
     emptyEl.style.display = 'none';
@@ -1175,11 +1245,46 @@ border-radius:5px;
   // default date = today
   document.getElementById('dateNeeded').valueAsDate = new Date();
 
+  // ---- ตัวเลือก "กำหนดเอง" ในแดชบอร์ด: ตั้งค่าเริ่มต้นเป็นต้นเดือนนี้ - วันนี้ ----
+  (function initDashCustomRange() {
+    const today = new Date();
+    const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('dashFrom').valueAsDate = firstOfMonth;
+    document.getElementById('dashTo').valueAsDate = today;
+  })();
+
+  function toggleDashCustomRange() {
+    const isCustom = document.getElementById('dashPeriod').value === 'custom';
+    document.getElementById('dashCustomRange').style.display = isCustom ? 'flex' : 'none';
+  }
+
+  // ---- ตัวเลือก "เลือกเดือน..." ในแท็บรายละเอียด: ตั้งค่าเริ่มต้นเป็นเดือนนี้ ----
+  (function initDetailMonthPicker() {
+    const today = new Date();
+    const ym = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+    document.getElementById('detailMonthInput').value = ym;
+  })();
+
+  function toggleDetailMonthPicker() {
+    const isMonthMode = document.getElementById('detailPeriod').value === 'month';
+    document.getElementById('detailMonthPicker').style.display = isMonthMode ? 'flex' : 'none';
+  }
+
   document.getElementById('refreshBtn').addEventListener('click', loadHistory);
   document.getElementById('refreshDashBtn').addEventListener('click', loadDashboard);
-  document.getElementById('dashPeriod').addEventListener('change', loadDashboard);
+  document.getElementById('dashPeriod').addEventListener('change', () => {
+    toggleDashCustomRange();
+    // สลับไปช่วงพรีเซ็ตให้โหลดทันที ส่วน "กำหนดเอง" รอผู้ใช้กดปุ่ม "ดูข้อมูล" แทน
+    if (document.getElementById('dashPeriod').value !== 'custom') loadDashboard();
+  });
+  document.getElementById('dashCustomApplyBtn').addEventListener('click', loadDashboard);
   document.getElementById('refreshDetailBtn').addEventListener('click', loadDetail);
-  document.getElementById('detailPeriod').addEventListener('change', loadDetail);
+  document.getElementById('detailPeriod').addEventListener('change', () => {
+    toggleDetailMonthPicker();
+    // สลับไปช่วงพรีเซ็ตให้โหลดทันที ส่วน "เลือกเดือน..." รอผู้ใช้กดปุ่ม "ดูข้อมูล" แทน
+    if (document.getElementById('detailPeriod').value !== 'month') loadDetail();
+  });
+  document.getElementById('detailMonthApplyBtn').addEventListener('click', loadDetail);
 
   loadHistory();
 </script>
