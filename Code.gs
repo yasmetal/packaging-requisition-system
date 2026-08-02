@@ -9,7 +9,7 @@
  *    - Who has access: Anyone (หรือ Anyone within [organization] ถ้าต้องการจำกัดเฉพาะในองค์กร)
  * 4. คัดลอก URL ที่ได้ (ลงท้ายด้วย /exec) ไปวางใน index.html ตัวแปร SCRIPT_URL
  *
- * ข้อมูลจะถูกเก็บเป็นแถวในชีตชื่อ "Requests" ภายใน Google Sheet เดียวกันที่ผูก Script นี้ไว้
+ * ข้อมูลจะถูกเก็บเป็นแถวในชีตชื่อ "Requests" ภายใน Google Sheet เดียวกับที่ผูก Script นี้ไว้
  * (ไฟล์ Sheet จะอยู่ใน Google Drive ของบัญชีที่ deploy Web App นี้)
  */
 
@@ -122,7 +122,7 @@ function doGet(e) {
  *              (ไม่ใช่แค่ปัดเป็นทั้งเดือน) แล้วค่อยจัดกลุ่มผลลัพธ์เป็นรายเดือนตามช่วงที่ครอบคลุม
  * หมายเหตุ: ถุงพลาสติกทุกเบอร์จะถูกรวมเป็นรายการ "ถุงพลาสติก" รายการเดียว (ไม่แยกตามเบอร์)
  * คืนค่า { months: ["2026-02", ...], itemNames: [...], series: {itemName: [qty,...]}, totals: {...},
- *          totalRequests, thisMonthRequests, thisMonthKey, requestsByMonth: [n, ...] }
+ *          totalRequests, thisMonthRequests, requestsByMonth: [n, ...] }
  */
 function getMonthlySummary_(monthsParam, fromParam, toParam) {
   const tz = Session.getScriptTimeZone();
@@ -223,11 +223,13 @@ function getMonthlySummary_(monthsParam, fromParam, toParam) {
 
 /**
  * รวมยอดเบิกแยกตามรายการย่อยจริง (กล่องแยกตามไซซ์ / ถุงพลาสติกแยกตามเบอร์ /
- * เทปใส / บับเบิ้ล นับรวมเป็นรายการเดียวเพราะไม่มีขนาดย่อย)
- * monthsParam: จำนวนเดือนย้อนหลัง (รวมเดือนปัจจุบัน) หรือ 'all' เพื่อรวมยอดตั้งแต่รายการแรกสุด
+ * เทปใส / บับเบิ้ล นับรวมเป็นรายการเดียวเพราะไม่มีขนาดย่อย) แยกผลลัพธ์เป็น "บล็อกตามเดือน"
+ * เพื่อดูเปรียบเทียบแนวโน้มการเบิกแต่ละเดือนได้ (ไม่รวมยอดทั้งช่วงเป็นก้อนเดียวเหมือนเดิม)
+ * monthsParam: จำนวนเดือนย้อนหลัง (รวมเดือนปัจจุบัน) หรือ 'all' เพื่อไล่ตั้งแต่เดือนของรายการแรกสุดในชีต
  *              (ไม่ใช้ถ้าส่ง monthParam มาแทน — ส่ง null ได้)
- * monthParam: ถ้าระบุ (yyyy-MM) จะกรองเฉพาะเดือนนั้นเดือนเดียว โดยไม่สนใจ monthsParam
- * คืนค่า { items: [{key, category, size, label, qty}, ...], month } เรียงจากเบิกเยอะสุดไปน้อยสุด
+ * monthParam: ถ้าระบุ (yyyy-MM) จะคืนค่าเดือนนั้นเดือนเดียว (1 บล็อก) โดยไม่สนใจ monthsParam
+ * คืนค่า { months: [{ month: 'yyyy-MM', items: [{key, category, size, label, qty}, ...] }, ...] }
+ *          เรียงเดือนใหม่สุดก่อน ส่วนรายการในแต่ละเดือนเรียงจากเบิกเยอะสุดไปน้อยสุด
  */
 function getDetailBreakdown_(monthsParam, monthParam) {
   const tz = Session.getScriptTimeZone();
@@ -236,21 +238,43 @@ function getDetailBreakdown_(monthsParam, monthParam) {
   values.shift(); // remove header
 
   const now = new Date();
-  let cutoff = null; // null = ไม่กรองช่วงเวลา (all)
-  if (!monthParam && monthsParam !== 'all') {
-    cutoff = new Date(now.getFullYear(), now.getMonth() - (monthsParam - 1), 1);
+  let monthKeys;
+
+  if (monthParam) {
+    monthKeys = [monthParam];
+  } else if (monthsParam === 'all') {
+    // หาเดือนที่เก่าที่สุดจากข้อมูลจริง แล้วไล่มาจนถึงเดือนปัจจุบัน
+    let earliest = now;
+    values.forEach(row => {
+      const ts = toDate_(row[0]);
+      if (ts && ts < earliest) earliest = ts;
+    });
+    const start = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+    monthKeys = [];
+    let cursor = start;
+    while (cursor <= end) {
+      monthKeys.push(Utilities.formatDate(cursor, tz, 'yyyy-MM'));
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    }
+    if (monthKeys.length === 0) monthKeys.push(Utilities.formatDate(now, tz, 'yyyy-MM'));
+  } else {
+    monthKeys = [];
+    for (let i = monthsParam - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthKeys.push(Utilities.formatDate(d, tz, 'yyyy-MM'));
+    }
   }
 
-  const totals = {}; // key -> { category, size, qty }
+  const byMonth = {}; // monthKey -> { key -> { category, size, qty } }
+  monthKeys.forEach(m => { byMonth[m] = {}; });
+
   values.forEach(row => {
     const ts = toDate_(row[0]);
     if (!ts) return;
-    if (monthParam) {
-      const monthKey = Utilities.formatDate(ts, tz, 'yyyy-MM');
-      if (monthKey !== monthParam) return;
-    } else if (cutoff && ts < cutoff) {
-      return;
-    }
+    const monthKey = Utilities.formatDate(ts, tz, 'yyyy-MM');
+    if (!byMonth[monthKey]) return; // อยู่นอกช่วงที่ขอ
+
     let items = [];
     try { items = JSON.parse(row[4]); } catch (e) { items = []; }
 
@@ -259,26 +283,31 @@ function getDetailBreakdown_(monthsParam, monthParam) {
       const size = it.size || '';
       const key = category + '||' + size;
       const qty = Number(it.qty) || 0;
-      if (!totals[key]) totals[key] = { category: category, size: size, qty: 0 };
-      totals[key].qty += qty;
+      const bucket = byMonth[monthKey];
+      if (!bucket[key]) bucket[key] = { category: category, size: size, qty: 0 };
+      bucket[key].qty += qty;
     });
   });
 
-  const list = Object.keys(totals)
-    .map(key => {
-      const t = totals[key];
-      return {
-        key: key,
-        category: t.category,
-        size: t.size,
-        label: t.size ? itemLabel_({ name: t.category, size: t.size }) : t.category,
-        qty: t.qty
-      };
-    })
-    .filter(it => it.qty > 0)
-    .sort((a, b) => b.qty - a.qty);
+  const months = monthKeys.slice().reverse().map(m => {
+    const totals = byMonth[m];
+    const list = Object.keys(totals)
+      .map(key => {
+        const t = totals[key];
+        return {
+          key: key,
+          category: t.category,
+          size: t.size,
+          label: t.size ? itemLabel_({ name: t.category, size: t.size }) : t.category,
+          qty: t.qty
+        };
+      })
+      .filter(it => it.qty > 0)
+      .sort((a, b) => b.qty - a.qty);
+    return { month: m, items: list };
+  });
 
-  return { items: list, month: monthParam || null };
+  return { months: months };
 }
 
 /**
