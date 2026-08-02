@@ -467,6 +467,23 @@ overflow:hidden;
 height:100%;
 border-radius:5px;
 }
+.detail-month-block{margin-bottom:20px;}
+.detail-month-block:last-child{margin-bottom:0;}
+.detail-month-header{
+font-size:.85rem;
+font-weight:700;
+color:var(--primary-dark);
+background:var(--primary-light);
+padding:7px 10px;
+border-radius:8px;
+margin-bottom:2px;
+}
+.detail-month-empty{
+font-size:.82rem;
+color:var(--muted);
+padding:12px 0 16px;
+text-align:center;
+}
 </style>
 </head>
 <body>
@@ -502,7 +519,7 @@ border-radius:5px;
       <label>ชื่อผู้เบิก <span class="required">*</span></label>
       <input type="text" id="name" required placeholder="ชื่อ-นามสกุล">
 
-      <label>แผนก / ญาย <span class="required">*</span></label>
+      <label>แผนก / ฝ่าย <span class="required">*</span></label>
       <input type="text" id="department" required placeholder="เช่น คลังสินค้า, บัญชี">
 
       <label>วันที่ต้องการใช้ <span class="required">*</span></label>
@@ -658,7 +675,7 @@ border-radius:5px;
         </label>
         <button type="button" class="refresh-btn" id="detailMonthApplyBtn">ดูข้อมูล</button>
       </div>
-      <div class="hint">รวมยอดเบิกของแต่ละไซซ์กล่อง / เบอร์ถุงพลาสติก / เทปใส / บับเบิ้ล เป็นรายการเดียวต่อชนิด เรียงจากเบิกเยอะสุดไปน้อยสุด เพื่อให้เห็นภาพรวมชัดเจนว่าอะไรถูกเบิกไปเยอะที่สุด</div>
+      <div class="hint">แสดงแยกเป็นบล็อกรายเดือน แต่ละเดือนรวมยอดเบิกของแต่ละไซซ์กล่อง / เบอร์ถุงพลาสติก / เทปใส / บับเบิ้ล เป็นรายการเดียวต่อชนิด เรียงจากเบิกเยอะสุดไปน้อยสุด เพื่อเปรียบเทียบแนวโน้มการเบิกในแต่ละเดือนได้ชัดเจน</div>
       <div id="detailList" style="margin-top:14px;"></div>
       <div id="detailEmpty" class="dash-empty" style="display:none;"></div>
     </div>
@@ -1238,20 +1255,32 @@ border-radius:5px;
   function renderDetail(detail) {
     const listEl = document.getElementById('detailList');
     const emptyEl = document.getElementById('detailEmpty');
-    const items = (detail && detail.items) || [];
+    const months = (detail && detail.months) || [];
 
-    if (items.length === 0) {
+    const hasAnyData = months.some(m => (m.items || []).length > 0);
+    if (!hasAnyData) {
       listEl.innerHTML = '';
       emptyEl.style.display = 'block';
-      emptyEl.textContent = detail && detail.month
-        ? `ยังไม่มีข้อมูลการเบิกในเดือน${monthLabelFull(detail.month)}`
+      emptyEl.textContent = months.length === 1
+        ? `ยังไม่มีข้อมูลการเบิกในเดือน${monthLabelFull(months[0].month)}`
         : 'ยังไม่มีข้อมูลการเบิกในช่วงที่เลือก';
       return;
     }
     emptyEl.style.display = 'none';
 
+    listEl.innerHTML = months.map(monthBlock => renderDetailMonthBlock(monthBlock)).join('');
+  }
+
+  function renderDetailMonthBlock(monthBlock) {
+    const items = monthBlock.items || [];
+    const header = `<div class="detail-month-header">${escapeHtml(monthLabelFull(monthBlock.month))}</div>`;
+
+    if (items.length === 0) {
+      return `<div class="detail-month-block">${header}<div class="detail-month-empty">ยังไม่มีข้อมูลการเบิกในเดือนนี้</div></div>`;
+    }
+
     const max = items[0].qty || 1;
-    listEl.innerHTML = items.map((it, i) => {
+    const rows = items.map((it, i) => {
       const color = ITEM_COLORS[it.category] || '#94a3b8';
       const unit = ITEM_UNITS[it.category] || '';
       return `
@@ -1266,6 +1295,8 @@ border-radius:5px;
         </div>
       </div>`;
     }).join('');
+
+    return `<div class="detail-month-block">${header}${rows}</div>`;
   }
 
   // default date = today
