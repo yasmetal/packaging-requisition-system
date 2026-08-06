@@ -559,6 +559,16 @@ text-align:center;
           <div class="size-rows" data-rows-for="ถุงพลาสติก"></div>
           <button type="button" class="add-size-btn" data-add-for="ถุงพลาสติก">+ เพิ่มเบอร์</button>
         </div>
+        <div class="item-row" data-item="ใบปะหน้า Label">
+          <div class="item-left">
+            <input type="checkbox" class="item-check" data-name="ใบปะหน้า Label">
+            <div>
+              <div class="item-name">🏷️ ใบปะหน้า Label</div>
+              <div class="item-unit">หน่วย: อัน</div>
+            </div>
+          </div>
+          <input type="number" class="qty-input" min="1" placeholder="จำนวน" disabled>
+        </div>
       </div>
       <div class="hint">กล่องและถุงพลาสติกเลือกได้หลายขนาด/เบอร์ในคำขอเดียว — กด "+ เพิ่มขนาด" เพื่อเพิ่มรายการ</div>
 
@@ -641,12 +651,13 @@ text-align:center;
               <th>เทปใส</th>
               <th>บับเบิ้ล</th>
               <th>ถุงพลาสติก</th>
+              <th>ใบปะหน้า Label</th>
               <th>รวม</th>
               <th>คำขอ</th>
             </tr>
           </thead>
           <tbody id="monthlyTableBody">
-            <tr><td colspan="7" style="text-align:center;color:var(--muted);">กำลังโหลด...</td></tr>
+            <tr><td colspan="8" style="text-align:center;color:var(--muted);">กำลังโหลด...</td></tr>
           </tbody>
         </table>
       </div>
@@ -690,8 +701,8 @@ text-align:center;
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWTTXTybmq0ArPGa-RjNJio2evN_N1lKqa4XW_9jC3DzvdyuN8J6LRzysvo9cOmF6-/exec";
   // ตัวอย่าง: https://script.google.com/macros/s/AKfycb.../exec
 
-  const ITEM_COLORS = { 'กล่อง': '#2563eb', 'เทปใส': '#16a34a', 'บับเบิ้ล': '#7c3aed', 'ถุงพลาสติก': '#ea580c' };
-  const ITEM_UNITS = { 'กล่อง': 'ใบ', 'เทปใส': 'ตั้ง', 'บับเบิ้ล': 'ม้วน', 'ถุงพลาสติก': 'ใบ' };
+  const ITEM_COLORS = { 'กล่อง': '#2563eb', 'เทปใส': '#16a34a', 'บับเบิ้ล': '#7c3aed', 'ถุงพลาสติก': '#ea580c', 'ใบปะหน้า Label': '#db2777' };
+  const ITEM_UNITS = { 'กล่อง': 'ใบ', 'เทปใส': 'ตั้ง', 'บับเบิ้ล': 'ม้วน', 'ถุงพลาสติก': 'ใบ', 'ใบปะหน้า Label': 'อัน' };
 
   // ตั้งค่า <input type=date/month> ด้วยวันที่ "ตามเวลาท้องถิ่น" แทน valueAsDate
   // (บั๊ก: valueAsDate ตีความ/แสดงผลเป็น UTC — ถ้าผู้ใช้อยู่โซนเวลา +7 และเปิดเว็บช่วงเที่ยงคืน-06:59น.
@@ -1015,7 +1026,7 @@ text-align:center;
     emptyEl.style.display = 'block';
     emptyEl.innerHTML = '<span class="spinner"></span>กำลังโหลดข้อมูล... (อาจใช้เวลาสักครู่)';
     document.getElementById('monthlyTableBody').innerHTML =
-      '<tr><td colspan="7" style="text-align:center;color:var(--muted);"><span class="spinner"></span>กำลังโหลด...</td></tr>';
+      '<tr><td colspan="8" style="text-align:center;color:var(--muted);"><span class="spinner"></span>กำลังโหลด...</td></tr>';
     setKpi('…', '…', '…');
   }
 
@@ -1052,7 +1063,7 @@ text-align:center;
       emptyEl.textContent = 'ตั้งค่า SCRIPT_URL ก่อนจึงจะแสดงแดชบอร์ดได้';
       setKpi('–', '–', '–');
       document.getElementById('monthlyTableBody').innerHTML =
-        '<tr><td colspan="7" style="text-align:center;color:var(--muted);">ตั้งค่า SCRIPT_URL ก่อนจึงจะแสดงตารางได้</td></tr>';
+        '<tr><td colspan="8" style="text-align:center;color:var(--muted);">ตั้งค่า SCRIPT_URL ก่อนจึงจะแสดงตารางได้</td></tr>';
       return;
     }
 
@@ -1088,7 +1099,7 @@ text-align:center;
       emptyEl.innerHTML = 'ไม่สามารถโหลดข้อมูลแดชบอร์ดได้ในขณะนี้ (เครือข่ายช้า หรือเซิร์ฟเวอร์ไม่ตอบสนอง)<br><button type="button" class="refresh-btn" style="margin-top:8px;" onclick="loadDashboard()">ลองใหม่</button>';
       setKpi('–', '–', '–');
       document.getElementById('monthlyTableBody').innerHTML =
-        '<tr><td colspan="7" style="text-align:center;color:var(--muted);">ไม่สามารถโหลดข้อมูลได้</td></tr>';
+        '<tr><td colspan="8" style="text-align:center;color:var(--muted);">ไม่สามารถโหลดข้อมูลได้</td></tr>';
     } finally {
       refreshDashBtn.disabled = false;
       periodSelect.disabled = false;
@@ -1135,10 +1146,10 @@ text-align:center;
     setKpi(summary.thisMonthRequests ?? 0, thisMonthQty, topItem);
 
     // ---- ตารางสรุปรายเดือน (ใหม่สุดอยู่บน) ----
-    const tableCols = ['กล่อง', 'เทปใส', 'บับเบิ้ล', 'ถุงพลาสติก'];
+    const tableCols = ['กล่อง', 'เทปใส', 'บับเบิ้ล', 'ถุงพลาสติก', 'ใบปะหน้า Label'];
     const tbody = document.getElementById('monthlyTableBody');
     if (months.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">ยังไม่มีข้อมูล</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">ยังไม่มีข้อมูล</td></tr>';
     } else {
       const rowsHtml = months.map((m, i) => {
         const vals = tableCols.map(c => (series[c] || [])[i] || 0);
